@@ -28,4 +28,4 @@ __all__ = ["get_build_id", "fetch_detailed_report"]
 
 __version__ = "1.0.0"
 __author__ = "Your Name"
-__license__ = "MIT"
+__license__ = "MIT" 
