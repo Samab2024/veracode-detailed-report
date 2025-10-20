@@ -34,9 +34,8 @@ bash
 
 veracode-report 2223648 XML
 veracode-report 2223648 PDF
-Programmatic (Python):
 
-python
+Programmatic (Python):
 
 from veracode_report.get_detailed_report import get_build_id, fetch_detailed_report
 
