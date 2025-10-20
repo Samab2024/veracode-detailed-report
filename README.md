@@ -17,7 +17,7 @@ Built with [veracode-api-signing](https://github.com/veracode/veracode-python-hm
 ## 🧩 Installation
 ```
 bash
-git clone https://github.com/<your-username>/veracode-detailed-report.git
+git clone https://github.com/Samab2024/veracode-detailed-report.git
 cd veracode-detailed-report
 pip install -r requirements.txt
 pip install .
