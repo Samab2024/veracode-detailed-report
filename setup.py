@@ -4,7 +4,7 @@ setup(
     name="veracode-detailed-report",
     version="1.0.0",
     description="Fetch Veracode detailed reports (XML or PDF) using HMAC authentication.",
-    author="Your Name",
+    author="Soumik Roy",
     packages=find_packages(),
     install_requires=[
         "requests",
