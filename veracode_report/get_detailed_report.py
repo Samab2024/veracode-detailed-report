@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-veracode-detailed-report: Fetch Veracode Detailed Reports (XML/PDF) for Static or Dynamic scans.
-Supports app_id or app_name, automatically detects scan type and retrieves latest build.
+veracode-detailed-report: Fetch Veracode Detailed Reports (XML/PDF) for Static (SS) or Dynamic (DS) scans.
+Supports app_id or app_name, automatically retrieves the latest build for DAST or directly fetches for Static.
 """
 
 import argparse
@@ -14,7 +14,7 @@ from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 # Base URL
 BASE_URL = "https://analysiscenter.veracode.com/api/5.0"
 
-# Optional: EU region support (auto-adjustable)
+# Region mapping
 REGION_URLS = {
     "us": "https://analysiscenter.veracode.com/api/5.0",
     "eu": "https://analysiscenter.veracode.eu.com/api/5.0",
@@ -37,26 +37,21 @@ def get_app_id(app_name, region="us"):
         sys.exit(1)
 
     root = ET.fromstring(response.text)
-
-    # Handle namespace dynamically
     ns = {"ns": root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
 
     for app in root.findall(".//ns:app", ns):
         if app.get("app_name") == app_name:
+            log(f"✅ Found app_id={app.get('app_id')}")
             return app.get("app_id")
 
     log(f"❌ App name '{app_name}' not found in your Veracode account.")
     sys.exit(1)
 
 
-def get_latest_build_id(app_id, region="us"):
-    """
-    Get the latest build_id for the given app.
-    - For DAST: look for dynamic_scan_type="ds"
-    - For Static: return the most recent one
-    """
+def get_latest_ds_build_id(app_id, region="us"):
+    """Get latest Dynamic (DAST) build_id for app_id."""
     url = f"{REGION_URLS[region]}/getbuildlist.do?app_id={app_id}"
-    log(f"Fetching build list for app_id={app_id} ...")
+    log(f"Fetching DAST build list for app_id={app_id} ...")
 
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
     if response.status_code != 200:
@@ -70,23 +65,23 @@ def get_latest_build_id(app_id, region="us"):
         log("⚠️  No builds found for this application.")
         sys.exit(1)
 
-    # Try Dynamic first
+    # Filter dynamic scans
     for build in reversed(builds):
         if build.get("dynamic_scan_type") == "ds" and build.get("policy_updated_date"):
-            return build.get("build_id"), "Dynamic"
+            log(f"✅ Found latest Dynamic build_id={build.get('build_id')}")
+            return build.get("build_id")
 
-    # Fallback: Static (most recent build)
-    latest_build = builds[-1]
-    return latest_build.get("build_id"), "Static"
+    log("⚠️  No valid Dynamic builds found.")
+    sys.exit(1)
 
 
-def get_build_info(app_id, build_id, scan_type, region="us"):
-    """Fetch buildinfo for given build_id (DAST requires both app_id & build_id)."""
+def get_build_info(app_id, build_id=None, scan_type="ss", region="us"):
+    """Fetch buildinfo for Static or Dynamic scans."""
     url = f"{REGION_URLS[region]}/getbuildinfo.do?app_id={app_id}"
-    if scan_type == "Dynamic":
+    if scan_type == "ds" and build_id:
         url += f"&build_id={build_id}"
 
-    log(f"Fetching build info for app_id={app_id}, build_id={build_id} ({scan_type}) ...")
+    log(f"Fetching build info for app_id={app_id}{', build_id='+build_id if build_id else ''} ...")
 
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
     if response.status_code != 200:
@@ -128,6 +123,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch Veracode Detailed Reports (Static/DAST).")
     parser.add_argument("-i", "--app_id", help="Veracode application ID")
     parser.add_argument("-n", "--app_name", help="Veracode application name")
+    parser.add_argument("-s", "--scan_type", required=True, choices=["ss", "ds"], help="Scan type: ss (Static) or ds (Dynamic)")
     parser.add_argument("-f", "--format", required=True, choices=["XML", "PDF"], help="Report format")
     parser.add_argument("-o", "--output_dir", default=".", help="Output directory")
     parser.add_argument("-p", "--prefix", help="Filename prefix")
@@ -141,14 +137,28 @@ def main():
     # Resolve app_id if only app_name is given
     app_id = args.app_id or get_app_id(args.app_name, args.region)
 
-    build_id, scan_type = get_latest_build_id(app_id, args.region)
-    log(f"Detected scan type: {scan_type} | build_id={build_id}")
+    if args.scan_type == "ds":
+        # DAST: buildlist → buildinfo → report
+        build_id = get_latest_ds_build_id(app_id, args.region)
+        _ = get_build_info(app_id, build_id, args.scan_type, args.region)
+        fetch_detailed_report(app_id, build_id, args.format, args.output_dir, args.prefix, args.region)
 
-    # Fetch buildinfo (for logging/debug)
-    _ = get_build_info(app_id, build_id, scan_type, args.region)
+    else:
+        # Static: directly fetch buildinfo using app_id
+        buildinfo_xml = get_build_info(app_id, None, args.scan_type, args.region)
 
-    # Download report
-    fetch_detailed_report(app_id, build_id, args.format, args.output_dir, args.prefix, args.region)
+        # Extract latest build_id from the buildinfo XML
+        root = ET.fromstring(buildinfo_xml)
+        ns = {"ns": root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
+        build_elem = root.find(".//ns:build", ns)
+        build_id = build_elem.get("build_id") if build_elem is not None else None
+
+        if not build_id:
+            log("⚠️  No build_id found in buildinfo response.")
+            sys.exit(1)
+
+        log(f"✅ Found latest Static build_id={build_id}")
+        fetch_detailed_report(app_id, build_id, args.format, args.output_dir, args.prefix, args.region)
 
 
 if __name__ == "__main__":
