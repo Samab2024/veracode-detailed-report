@@ -2,57 +2,50 @@
 """
 Example usage of the Veracode Detailed Report Fetcher module.
 
-This script demonstrates how to programmatically fetch XML or PDF
-Veracode detailed reports using HMAC authentication.
+Demonstrates programmatic fetching of XML or PDF reports using HMAC authentication.
+Supports app_id or app_name, region selection, output directory, and filename prefix.
 
 Requires:
-- Veracode API credentials configured in ~/.veracode/credentials
+- Veracode HMAC credentials in ~/.veracode/credentials
 - Installed package: veracode-detailed-report
 """
 
 import os
 from veracode_report.get_detailed_report import (
-    get_api_base,
-    get_app_id_from_name,
     get_build_id,
     fetch_detailed_report,
+    resolve_app_id,
+    REGIONS
 )
 
 def main():
-    # -------------------------------------------------------------------------
+    # -----------------------------
     # Configuration
-    # -------------------------------------------------------------------------
-    region = "us"  # Change to "eu" for European region
-    report_type = "XML"  # or "PDF"
-    app_identifier = "2223648"  # Can be app_id (numeric) or app_name (string)
-    output_dir = "./reports"
-    prefix = "veracode_"
+    # -----------------------------
+    app_id = None               # Use this if you want to fetch by ID
+    app_name = "test_java"      # Use this if you want to fetch by name
+    report_format = "PDF"       # Either "XML" or "PDF"
+    region = "us"               # "us" or "eu"
+    output_dir = "./reports"    # Directory to save reports
+    prefix = "test_"            # Optional filename prefix
 
-    # -------------------------------------------------------------------------
-    # Determine base URL and resolve app_id if needed
-    # -------------------------------------------------------------------------
-    api_base = get_api_base(region)
+    api_base = REGIONS[region]
 
-    if app_identifier.isdigit():
-        app_id = app_identifier
-        print(f"Using app_id: {app_id}")
-    else:
-        app_id = get_app_id_from_name(api_base, app_identifier)
+    # Resolve app_id if app_name is provided
+    if not app_id and app_name:
+        app_id = resolve_app_id(api_base, app_name)
 
-    # -------------------------------------------------------------------------
-    # Fetch build_id for the app
-    # -------------------------------------------------------------------------
+    # Fetch latest build_id
     build_id = get_build_id(api_base, app_id)
+    if not build_id:
+        print("❌ No build found for this application.")
+        return
 
-    # -------------------------------------------------------------------------
-    # Fetch and save the detailed report
-    # -------------------------------------------------------------------------
-    fetch_detailed_report(api_base, build_id, report_type, output_dir, prefix)
+    # Fetch and save report
+    fetch_detailed_report(api_base, build_id, report_format, output_dir, prefix)
 
-    # -------------------------------------------------------------------------
-    # Completion message
-    # -------------------------------------------------------------------------
-    report_path = os.path.join(output_dir, f"{prefix}{build_id}.{report_type.lower()}")
+    # Print completion message
+    report_path = os.path.join(output_dir, f"{prefix}detailed_report.{report_format.lower()}")
     print(f"\n✅ Done! Report saved at: {report_path}")
 
 
