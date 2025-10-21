@@ -7,6 +7,7 @@ Built with [veracode-api-signing](https://github.com/veracode/veracode-python-hm
 ---
 
 ## 🚀 Features
+
 - 🔐 Uses Veracode HMAC authentication.
 - 🌍 Supports **US** and **EU** Veracode regions.
 - 🧩 Fetches the latest `build_id` automatically.
@@ -34,22 +35,27 @@ veracode-report <app_id_or_name> <report_type> [OPTIONS]
 
 Arguments
 
---app_id or --app_name	Veracode Application ID or Name
---format	Type of report to fetch (XML or PDF)
-
-Optional Flags
-
---region	Veracode region (us or eu, default: us)
---output_dir	Directory to save reports (default: ./reports)
---prefix	Filename prefix (default: veracode_)
+| Short | Long           | Required                | Description                    | Example                  |
+| ----- | -------------- | ----------------------- | ------------------------------ | ------------------------ |
+| `-i`  | `--app_id`     | ✅ (either this or `-n`) | Veracode application ID        | `-i 1234567`             |
+| `-n`  | `--app_name`   | ✅ (either this or `-i`) | Veracode application name      | `-n "test_app"`         |
+| `-f`  | `--format`     | ✅                       | Report format (`XML` or `PDF`) | `-f PDF`                 |
+| `-r`  | `--region`     | ❌ (default: `us`)       | Veracode region (`us` or `eu`) | `-r eu`                  |
+| `-o`  | `--output_dir` | ❌ (default: `.`)        | Output directory for report    | `-o ~/Downloads/reports` |
+| `-p`  | `--prefix`     | ❌ (default: `""`)       | Optional filename prefix       | `-p test_`               |
+| `-h`  | `--help`       | ❌                       | Show help text                 | `-h`                     |
 
 Examples
 
 Fetch an XML report by app ID (US region)
-veracode-report --app_id 2223648 --format XML
+By app_id
+veracode-report -i 1234567 -f XML
+
+By app_name
+veracode-report -n "test_app" -f PDF -o ~/Downloads -p test_
 
 Fetch a PDF report by app name (EU region)
-veracode-report --app_name "test_java" --format PDF --output_dir ~/Downloads/ --prefix test_ --region EU
+veracode-report -n "My App EU" -f PDF -r eu -o ~/Downloads/ -p test_
 
 Programmatic (Python)
 
