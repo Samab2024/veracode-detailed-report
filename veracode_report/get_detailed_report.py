@@ -44,43 +44,36 @@ def get_app_id_from_name(app_name):
 # ==============================================================
 
 def get_latest_build_id(app_id, scan_type="ss"):
-    """
-    Fetches latest build_id based on scan type:
-    - ss (Static Scan): uses getbuildinfo.do
-    - ds (Dynamic Scan): uses buildlist.do then buildinfo.do for latest ds build
-    """
+    import requests
+    import xml.etree.ElementTree as ET
+    from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+
     base_url = "https://analysiscenter.veracode.com/api/5.0"
     headers = {"User-Agent": "veracode-report/2.0"}
 
-    if scan_type == "ss":
-        url = f"{base_url}/getbuildinfo.do?app_id={app_id}"
-        r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
-        r.raise_for_status()
-        xml_root = ET.fromstring(r.text)
-        build = xml_root.find(".//build")
-        if build is not None:
-            return build.get("build_id")
-        print("⚠️ No build found for static scan.")
-        return None
-
-    elif scan_type == "ds":
+    if scan_type == "ds":
         url = f"{base_url}/getbuildlist.do?app_id={app_id}"
         r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
         r.raise_for_status()
-        xml_root = ET.fromstring(r.text)
-        builds = xml_root.findall(".//build[@dynamic_scan_type='ds']")
-        if not builds:
+        root = ET.fromstring(r.text)
+
+        # Detect namespace dynamically
+        ns = {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
+
+        # Find all builds in namespace
+        builds = root.findall(".//ns:build", ns)
+        ds_builds = [b for b in builds if b.get("dynamic_scan_type") == "ds"]
+
+        if not ds_builds:
             print("❌ No dynamic scan builds found.")
             return None
-        # Sort by policy_updated_date
-        latest_build = sorted(
-            builds, key=lambda b: b.get("policy_updated_date") or "", reverse=True
-        )[0]
-        return latest_build.get("build_id")
 
-    else:
-        print(f"⚠️ Unknown scan_type: {scan_type}")
-        return None
+        # Sort by policy_updated_date to get the latest
+        latest_build = sorted(
+            ds_builds, key=lambda b: b.get("policy_updated_date") or "", reverse=True
+        )[0]
+
+        return latest_build.get("build_id")
 
 
 # ==============================================================
