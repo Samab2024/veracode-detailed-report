@@ -51,46 +51,52 @@ def get_latest_build_id(app_id, scan_type="ss"):
     base_url = "https://analysiscenter.veracode.com/api/5.0"
     headers = {"User-Agent": "veracode-report/2.0"}
 
-    if scan_type == "ds":
+    if scan_type == "ss":
+        url = f"{base_url}/getbuildinfo.do?app_id={app_id}"
+        r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
+        r.raise_for_status()
+        root = ET.fromstring(r.text)
+
+        # Detect namespace dynamically
+        if "}" in root.tag:
+            ns = {"ns": root.tag.split("}")[0].strip("{")}
+            build_elem = root.find(".//ns:build", ns)
+        else:
+            build_elem = root.find(".//build")
+
+        if build_elem is not None:
+            return build_elem.get("build_id")
+
+        print(f"⚠️ No {scan_type.upper()} builds found for app_id={app_id}.")
+        return None
+
+    elif scan_type == "ds":
         url = f"{base_url}/getbuildlist.do?app_id={app_id}"
         r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
         r.raise_for_status()
         root = ET.fromstring(r.text)
 
         # Detect namespace dynamically
-        ns = {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
+        if "}" in root.tag:
+            ns = {"ns": root.tag.split("}")[0].strip("{")}
+            builds = root.findall(".//ns:build", ns)
+        else:
+            builds = root.findall(".//build")
 
-        # Find all builds in namespace
-        builds = root.findall(".//ns:build", ns)
         ds_builds = [b for b in builds if b.get("dynamic_scan_type") == "ds"]
-
         if not ds_builds:
-            print("❌ No dynamic scan builds found.")
+            print(f"⚠️ No dynamic scan builds found for app_id={app_id}.")
             return None
 
-        # Sort by policy_updated_date to get the latest
         latest_build = sorted(
             ds_builds, key=lambda b: b.get("policy_updated_date") or "", reverse=True
         )[0]
 
         return latest_build.get("build_id")
 
-    if scan_type == "ss":
-        url = f"{base_url}/getbuildinfo.do?app_id={app_id}"
-        r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
-        r.raise_for_status()
-        root = ET.fromstring(r.text)
-    
-        # Detect namespace dynamically
-        ns = {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
-    
-        build_elem = root.find(".//ns:build", ns)
-        if build_elem is not None:
-            return build_elem.get("build_id")
-    
-        print("⚠️ No build found for static scan.")
+    else:
+        print(f"⚠️ Unknown scan_type={scan_type}")
         return None
-
 
 
 # ==============================================================
