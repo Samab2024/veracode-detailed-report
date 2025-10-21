@@ -108,12 +108,21 @@ def main():
         description="Fetch Veracode detailed report (XML or PDF) using app_id or app_name."
     )
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--app_id", help="Veracode application ID")
-    group.add_argument("--app_name", help="Veracode application name")
-    parser.add_argument("--format", required=True, choices=["XML", "PDF"], help="Report format to download")
-    parser.add_argument("--region", choices=["us", "eu"], default="us", help="Veracode region (default: us)")
-    parser.add_argument("--output_dir", default=".", help="Output directory for reports")
-    parser.add_argument("--prefix", default="", help="Optional prefix for output filename")
+    group.add_argument("-i", "--app_id", help="Veracode application ID")
+    group.add_argument("-n", "--app_name", help="Veracode application name")
+
+    parser.add_argument(
+        "-f", "--format", required=True, choices=["XML", "PDF"], help="Report format to download"
+    )
+    parser.add_argument(
+        "-r", "--region", choices=["us", "eu"], default="us", help="Veracode region (default: us)"
+    )
+    parser.add_argument(
+        "-o", "--output_dir", default=".", help="Output directory for reports"
+    )
+    parser.add_argument(
+        "-p", "--prefix", default="", help="Optional prefix for output filename"
+    )
 
     args = parser.parse_args()
     api_base = REGIONS[args.region]
