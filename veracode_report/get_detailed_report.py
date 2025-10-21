@@ -19,14 +19,20 @@ from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 # ==============================================================
 
 def get_app_id_from_name(app_name):
-    """Fetch app_id for the given app_name"""
+    """Fetch app_id for the given app_name, handles XML namespace"""
     url = "https://analysiscenter.veracode.com/api/5.0/getapplist.do"
     resp = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
     resp.raise_for_status()
 
     root = ET.fromstring(resp.text)
-    for app in root.findall("app"):
+
+    # detect namespace
+    ns = {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
+
+    # search using namespace
+    for app in root.findall(".//ns:app", ns):
         if app.get("app_name") == app_name:
+            print(f"✅ Found app_id={app.get('app_id')}")
             return app.get("app_id")
 
     print(f"❌ App name '{app_name}' not found in your Veracode account.")
