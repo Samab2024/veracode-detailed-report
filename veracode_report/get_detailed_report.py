@@ -1,83 +1,144 @@
 import sys
+import os
+import argparse
 import requests
 import xml.etree.ElementTree as ET
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 
-API_BASE = "https://analysiscenter.veracode.com"
-HEADERS = {"User-Agent": "Veracode Detailed Report Fetcher"}
+# Supported regions
+REGIONS = {
+    "us": "https://analysiscenter.veracode.com",
+    "eu": "https://analysiscenter.veracode.eu",
+}
 
-def get_build_id(app_id: str) -> str:
-    """Fetch the latest build_id for an application ID."""
+headers = {"User-Agent": "Veracode Detailed Report Fetcher"}
+
+
+def resolve_app_id(api_base, app_name):
+    """Resolve app_id given an app_name."""
+    print(f"Resolving app_id for app_name='{app_name}' ...")
+    try:
+        resp = requests.get(
+            f"{api_base}/api/5.0/getapplist.do",
+            auth=RequestsAuthPluginVeracodeHMAC(),
+            headers=headers,
+        )
+        resp.raise_for_status()
+        root = ET.fromstring(resp.text)
+
+        for app in root.findall(".//app"):
+            if app.get("app_name") == app_name:
+                app_id = app.get("app_id")
+                print(f"✅ Found app_id={app_id} for app_name={app_name}")
+                return app_id
+
+        print(f"❌ App name '{app_name}' not found in your Veracode account.")
+        sys.exit(1)
+
+    except requests.RequestException as e:
+        print("Error fetching application list:")
+        print(e)
+        sys.exit(1)
+
+
+def get_build_id(api_base, app_id):
+    """Fetch the latest build_id for a given app_id."""
+    print(f"Fetching build info for app_id={app_id} ...")
     try:
         response = requests.get(
-            f"{API_BASE}/api/5.0/getbuildinfo.do?app_id={app_id}",
+            f"{api_base}/api/5.0/getbuildinfo.do?app_id={app_id}",
             auth=RequestsAuthPluginVeracodeHMAC(),
-            headers=HEADERS,
+            headers=headers,
         )
         response.raise_for_status()
-    except requests.RequestException as e:
-        print("❌ Failed to get build info:", e)
-        sys.exit(1)
 
-    try:
         root = ET.fromstring(response.text)
-        ns = {"ns": root.tag.split('}')[0].strip('{')}
-        build_elem = root.find(".//ns:build", ns)
-        if build_elem is not None and "build_id" in build_elem.attrib:
-            return build_elem.attrib["build_id"]
+        build = root.find(".//build")
+        if build is not None and "build_id" in build.attrib:
+            build_id = build.attrib["build_id"]
+            print(f"✅ Found build_id={build_id}")
+            return build_id
         else:
-            print("⚠️  No build_id found in response XML.")
-            sys.exit(1)
-    except ET.ParseError as e:
-        print("❌ Failed to parse XML response:", e)
+            print("⚠️ No build_id found in response XML.")
+            return None
+
+    except requests.RequestException as e:
+        print("Error fetching build info:")
+        print(e)
         sys.exit(1)
 
 
-def fetch_detailed_report(build_id: str, report_type: str) -> str:
-    """Fetch and save Veracode detailed report (XML or PDF)."""
-    report_type = report_type.upper()
-    if report_type == "XML":
-        endpoint = f"{API_BASE}/api/5.0/detailedreport.do?build_id={build_id}"
-        filename = f"detailed_report_{build_id}.xml"
-    elif report_type == "PDF":
-        endpoint = f"{API_BASE}/api/4.0/detailedreportpdf.do?build_id={build_id}"
-        filename = f"detailed_report_{build_id}.pdf"
+def fetch_detailed_report(api_base, build_id, report_format, output_dir, prefix):
+    """Fetch detailed report (XML or PDF)."""
+    report_format = report_format.upper()
+    if report_format == "PDF":
+        endpoint = "/api/4.0/detailedreportpdf.do"
+        ext = "pdf"
     else:
-        print("❌ Invalid report type. Use 'XML' or 'PDF'.")
-        sys.exit(1)
+        endpoint = "/api/5.0/detailedreport.do"
+        ext = "xml"
+
+    output_dir = os.path.expanduser(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    filename = os.path.join(output_dir, f"{prefix or ''}detailed_report.{ext}")
+
+    print(f"Downloading {report_format} report to {filename} ...")
 
     try:
-        response = requests.get(endpoint, auth=RequestsAuthPluginVeracodeHMAC(), headers=HEADERS)
+        response = requests.get(
+            f"{api_base}{endpoint}?build_id={build_id}",
+            auth=RequestsAuthPluginVeracodeHMAC(),
+            headers=headers,
+        )
         response.raise_for_status()
-    except requests.RequestException as e:
-        print("❌ Failed to fetch detailed report:", e)
-        sys.exit(1)
 
-    # Save file (binary for PDF, text for XML)
-    mode = "wb" if report_type == "PDF" else "w"
-    with open(filename, mode) as f:
-        if report_type == "PDF":
+        with open(filename, "wb") as f:
             f.write(response.content)
-        else:
-            f.write(response.text)
 
-    print(f"✅ {report_type} report saved as {filename}")
-    return filename
+        print(f"✅ Report saved: {filename}")
+
+    except requests.RequestException as e:
+        print("Error fetching detailed report:")
+        print(e)
+        sys.exit(1)
 
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: veracode-report <app_id> <report_type>")
-        print("Example: veracode-report 2223648 XML")
+    parser = argparse.ArgumentParser(
+        description="Fetch Veracode detailed report (XML or PDF) using app_id or app_name."
+    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-i", "--app_id", help="Veracode application ID")
+    group.add_argument("-n", "--app_name", help="Veracode application name")
+
+    parser.add_argument(
+        "-f", "--format", required=True, choices=["XML", "PDF"], help="Report format to download"
+    )
+    parser.add_argument(
+        "-r", "--region", choices=["us", "eu"], default="us", help="Veracode region (default: us)"
+    )
+    parser.add_argument(
+        "-o", "--output_dir", default=".", help="Output directory for reports"
+    )
+    parser.add_argument(
+        "-p", "--prefix", default="", help="Optional prefix for output filename"
+    )
+
+    args = parser.parse_args()
+    api_base = REGIONS[args.region]
+
+    # Resolve app_id
+    app_id = args.app_id
+    if not app_id and args.app_name:
+        app_id = resolve_app_id(api_base, args.app_name)
+
+    # Fetch build and report
+    build_id = get_build_id(api_base, app_id)
+    if not build_id:
+        print("❌ No build found for this application.")
         sys.exit(1)
 
-    app_id = sys.argv[1]
-    report_type = sys.argv[2]
-
-    print(f"Fetching build info for app_id={app_id}...")
-    build_id = get_build_id(app_id)
-    print(f"Found build_id={build_id}, fetching {report_type} report...")
-    fetch_detailed_report(build_id, report_type)
+    fetch_detailed_report(api_base, build_id, args.format, args.output_dir, args.prefix)
 
 
 if __name__ == "__main__":
