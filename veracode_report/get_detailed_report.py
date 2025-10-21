@@ -75,6 +75,23 @@ def get_latest_build_id(app_id, scan_type="ss"):
 
         return latest_build.get("build_id")
 
+    if scan_type == "ss":
+        url = f"{base_url}/getbuildinfo.do?app_id={app_id}"
+        r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
+        r.raise_for_status()
+        root = ET.fromstring(r.text)
+    
+        # Detect namespace dynamically
+        ns = {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
+    
+        build_elem = root.find(".//ns:build", ns)
+        if build_elem is not None:
+            return build_elem.get("build_id")
+    
+        print("⚠️ No build found for static scan.")
+        return None
+
+
 
 # ==============================================================
 # Fetch Detailed Report (XML, PDF, or CSV)
