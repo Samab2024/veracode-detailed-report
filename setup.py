@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="veracode-detailed-report",
-    version="1.0.0",
+    version="1.1.0",
     description="Fetch Veracode detailed reports (XML or PDF) using HMAC authentication.",
     author="Soumik Roy",
     packages=find_packages(),
