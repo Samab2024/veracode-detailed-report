@@ -42,7 +42,7 @@ veracode-report <app_id> <report_type>
 | `-r`  | `--region`     | ❌ (default: `us`)       | Veracode region (`us` or `eu`) | `-r eu`                  |
 | `-o`  | `--output_dir` | ❌ (default: `.`)        | Output directory for report    | `-o ~/Downloads/reports` |
 | `-p`  | `--prefix`     | ❌ (default: `""`)       | Optional filename prefix       | `-p test_`               |
-| `-s`  | `--scan_type`  | ❌ (default: `""`)       | Optional scan type             | `-s ds`                  |
+| `-s`  | `--scan_type`  | ❌ (default: `ss`)       | Optional scan type             | `-s ds`                  |
 | `-h`  | `--help`       | ❌                       | Show help text                 | `-h`                     |
 
 Examples
