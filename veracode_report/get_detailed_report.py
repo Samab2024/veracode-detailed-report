@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-veracode-detailed-report: Fetch Veracode Detailed Reports (XML/PDF) for Static (SS) or Dynamic (DS) scans.
-Supports app_id or app_name, automatically retrieves the latest build for DAST or directly fetches for Static.
+veracode_report/get_detailed_report.py
+
+Generates a detailed Veracode report for an application.
+Supports both Static (ss) and Dynamic (ds) scans.
 """
 
 import argparse
@@ -11,154 +13,137 @@ import requests
 import xml.etree.ElementTree as ET
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 
-# Base URL
-BASE_URL = "https://analysiscenter.veracode.com/api/5.0"
 
-# Region mapping
-REGION_URLS = {
-    "us": "https://analysiscenter.veracode.com/api/5.0",
-    "eu": "https://analysiscenter.veracode.eu.com/api/5.0",
-}
+# ==============================================================
+# Utility: Get App ID from App Name
+# ==============================================================
 
+def get_app_id_from_name(app_name):
+    """Fetch app_id for the given app_name"""
+    url = "https://analysiscenter.veracode.com/api/5.0/getapplist.do"
+    resp = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+    resp.raise_for_status()
 
-# -------------------- Utilities --------------------
-def log(msg):
-    print(msg, flush=True)
-
-
-def get_app_id(app_name, region="us"):
-    """Fetch app_id by app_name (handles XML namespace correctly)."""
-    url = f"{REGION_URLS[region]}/getapplist.do"
-    log(f"Resolving app_id for app_name='{app_name}' ...")
-
-    response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-    if response.status_code != 200:
-        log(f"❌ Failed to retrieve app list. HTTP {response.status_code}")
-        sys.exit(1)
-
-    root = ET.fromstring(response.text)
-    ns = {"ns": root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
-
-    for app in root.findall(".//ns:app", ns):
+    root = ET.fromstring(resp.text)
+    for app in root.findall("app"):
         if app.get("app_name") == app_name:
-            log(f"✅ Found app_id={app.get('app_id')}")
             return app.get("app_id")
 
-    log(f"❌ App name '{app_name}' not found in your Veracode account.")
-    sys.exit(1)
+    print(f"❌ App name '{app_name}' not found in your Veracode account.")
+    return None
 
 
-def get_latest_ds_build_id(app_id, region="us"):
-    """Get latest Dynamic (DAST) build_id for app_id."""
-    url = f"{REGION_URLS[region]}/getbuildlist.do?app_id={app_id}"
-    log(f"Fetching DAST build list for app_id={app_id} ...")
+# ==============================================================
+# Utility: Get Latest Build ID (Static or Dynamic)
+# ==============================================================
 
-    response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-    if response.status_code != 200:
-        log(f"❌ Failed to retrieve build list. HTTP {response.status_code}")
-        sys.exit(1)
+def get_latest_build_id(app_id, scan_type="ss"):
+    """
+    Fetches latest build_id based on scan type:
+    - ss (Static Scan): uses getbuildinfo.do
+    - ds (Dynamic Scan): uses buildlist.do then buildinfo.do for latest ds build
+    """
+    base_url = "https://analysiscenter.veracode.com/api/5.0"
+    headers = {"User-Agent": "veracode-report/2.0"}
 
-    root = ET.fromstring(response.text)
-    builds = root.findall(".//{https://analysiscenter.veracode.com/schema/2.0/buildlist}build")
-
-    if not builds:
-        log("⚠️  No builds found for this application.")
-        sys.exit(1)
-
-    # Filter dynamic scans
-    for build in reversed(builds):
-        if build.get("dynamic_scan_type") == "ds" and build.get("policy_updated_date"):
-            log(f"✅ Found latest Dynamic build_id={build.get('build_id')}")
+    if scan_type == "ss":
+        url = f"{base_url}/getbuildinfo.do?app_id={app_id}"
+        r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
+        r.raise_for_status()
+        xml_root = ET.fromstring(r.text)
+        build = xml_root.find(".//build")
+        if build is not None:
             return build.get("build_id")
+        print("⚠️ No build found for static scan.")
+        return None
 
-    log("⚠️  No valid Dynamic builds found.")
-    sys.exit(1)
+    elif scan_type == "ds":
+        url = f"{base_url}/getbuildlist.do?app_id={app_id}"
+        r = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC(), headers=headers)
+        r.raise_for_status()
+        xml_root = ET.fromstring(r.text)
+        builds = xml_root.findall(".//build[@dynamic_scan_type='ds']")
+        if not builds:
+            print("❌ No dynamic scan builds found.")
+            return None
+        # Sort by policy_updated_date
+        latest_build = sorted(
+            builds, key=lambda b: b.get("policy_updated_date") or "", reverse=True
+        )[0]
+        return latest_build.get("build_id")
 
-
-def get_build_info(app_id, build_id=None, scan_type="ss", region="us"):
-    """Fetch buildinfo for Static or Dynamic scans."""
-    url = f"{REGION_URLS[region]}/getbuildinfo.do?app_id={app_id}"
-    if scan_type == "ds" and build_id:
-        url += f"&build_id={build_id}"
-
-    log(f"Fetching build info for app_id={app_id}{', build_id='+build_id if build_id else ''} ...")
-
-    response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-    if response.status_code != 200:
-        log(f"❌ Failed to retrieve build info. HTTP {response.status_code}")
-        sys.exit(1)
-
-    return response.text
-
-
-def fetch_detailed_report(app_id, build_id, fmt, output_dir, prefix, region="us"):
-    """Download the detailed report in XML or PDF."""
-    if fmt.upper() == "PDF":
-        endpoint = f"{REGION_URLS[region].replace('/5.0', '/4.0')}/detailedreportpdf.do"
-        ext = "pdf"
     else:
-        endpoint = f"{REGION_URLS[region]}/detailedreport.do"
-        ext = "xml"
+        print(f"⚠️ Unknown scan_type: {scan_type}")
+        return None
 
-    url = f"{endpoint}?build_id={build_id}"
-    log(f"Downloading detailed report ({fmt}) for build_id={build_id} ...")
+
+# ==============================================================
+# Fetch Detailed Report (XML, PDF, or CSV)
+# ==============================================================
+
+def fetch_detailed_report(app_id, build_id, report_format, output_dir, prefix):
+    """Download detailed report for given build_id and app_id"""
+    base_url = "https://analysiscenter.veracode.com/api/5.0"
+    format_ext = report_format.lower()
+    url = f"{base_url}/detailedreport.do?app_id={app_id}&build_id={build_id}"
+
+    if format_ext in ["pdf", "xml", "csv"]:
+        url += f"&report_format={format_ext}"
+    else:
+        print(f"⚠️ Unsupported report format '{report_format}'. Defaulting to XML.")
+        format_ext = "xml"
+        url += "&report_format=xml"
+
+    print(f"📥 Fetching {report_format.upper()} report for build_id={build_id} ...")
 
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-    if response.status_code != 200:
-        log(f"❌ Failed to download report. HTTP {response.status_code}")
-        sys.exit(1)
+    response.raise_for_status()
 
-    os.makedirs(output_dir, exist_ok=True)
-    filename = f"{prefix or ''}veracode_report_{build_id}.{ext}"
-    file_path = os.path.join(output_dir, filename)
+    filename = f"{prefix}{app_id}_build_{build_id}_report.{format_ext}"
+    output_path = os.path.join(os.path.expanduser(output_dir), filename)
 
-    with open(file_path, "wb") as f:
+    with open(output_path, "wb") as f:
         f.write(response.content)
 
-    log(f"✅ Report saved to: {file_path}")
+    print(f"✅ Report saved to: {output_path}")
 
 
-# -------------------- Main Entry --------------------
+# ==============================================================
+# Main Entry Point
+# ==============================================================
+
 def main():
-    parser = argparse.ArgumentParser(description="Fetch Veracode Detailed Reports (Static/DAST).")
-    parser.add_argument("-i", "--app_id", help="Veracode application ID")
+    parser = argparse.ArgumentParser(
+        description="Generate Veracode Detailed Report (Static or Dynamic)"
+    )
+
+    parser.add_argument("-a", "--app_id", help="Veracode application ID")
     parser.add_argument("-n", "--app_name", help="Veracode application name")
-    parser.add_argument("-s", "--scan_type", required=True, choices=["ss", "ds"], help="Scan type: ss (Static) or ds (Dynamic)")
-    parser.add_argument("-f", "--format", required=True, choices=["XML", "PDF"], help="Report format")
-    parser.add_argument("-o", "--output_dir", default=".", help="Output directory")
-    parser.add_argument("-p", "--prefix", help="Filename prefix")
-    parser.add_argument("-r", "--region", choices=["us", "eu"], default="us", help="Region selection (default: us)")
+    parser.add_argument("-f", "--format", required=True, help="Report format: PDF | XML | CSV")
+    parser.add_argument("-s", "--scan_type", default="ss", help="Scan type: ss (Static) | ds (Dynamic)")
+    parser.add_argument("-o", "--output_dir", default=".", help="Output directory for report")
+    parser.add_argument("-p", "--prefix", default="", help="Filename prefix")
 
     args = parser.parse_args()
 
-    if not args.app_id and not args.app_name:
-        parser.error("You must specify either --app_id or --app_name.")
+    # Determine app_id
+    app_id = args.app_id
+    if not app_id and args.app_name:
+        print(f"Resolving app_id for app_name='{args.app_name}' ...")
+        app_id = get_app_id_from_name(args.app_name)
+    if not app_id:
+        print("❌ Please provide a valid app_id or app_name.")
+        sys.exit(1)
 
-    # Resolve app_id if only app_name is given
-    app_id = args.app_id or get_app_id(args.app_name, args.region)
+    # Determine latest build_id based on scan type
+    print(f"Fetching latest build for app_id={app_id} (scan_type={args.scan_type}) ...")
+    build_id = get_latest_build_id(app_id, scan_type=args.scan_type)
+    if not build_id:
+        print("❌ No build found. Exiting.")
+        sys.exit(1)
 
-    if args.scan_type == "ds":
-        # DAST: buildlist → buildinfo → report
-        build_id = get_latest_ds_build_id(app_id, args.region)
-        _ = get_build_info(app_id, build_id, args.scan_type, args.region)
-        fetch_detailed_report(app_id, build_id, args.format, args.output_dir, args.prefix, args.region)
-
-    else:
-        # Static: directly fetch buildinfo using app_id
-        buildinfo_xml = get_build_info(app_id, None, args.scan_type, args.region)
-
-        # Extract latest build_id from the buildinfo XML
-        root = ET.fromstring(buildinfo_xml)
-        ns = {"ns": root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
-        build_elem = root.find(".//ns:build", ns)
-        build_id = build_elem.get("build_id") if build_elem is not None else None
-
-        if not build_id:
-            log("⚠️  No build_id found in buildinfo response.")
-            sys.exit(1)
-
-        log(f"✅ Found latest Static build_id={build_id}")
-        fetch_detailed_report(app_id, build_id, args.format, args.output_dir, args.prefix, args.region)
+    # Fetch report
+    fetch_detailed_report(app_id, build_id, args.format, args.output_dir, args.prefix)
 
 
 if __name__ == "__main__":
