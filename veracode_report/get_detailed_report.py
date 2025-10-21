@@ -27,7 +27,7 @@ def log(msg):
 
 
 def get_app_id(app_name, region="us"):
-    """Fetch app_id by app_name."""
+    """Fetch app_id by app_name (handles XML namespace correctly)."""
     url = f"{REGION_URLS[region]}/getapplist.do"
     log(f"Resolving app_id for app_name='{app_name}' ...")
 
@@ -37,7 +37,11 @@ def get_app_id(app_name, region="us"):
         sys.exit(1)
 
     root = ET.fromstring(response.text)
-    for app in root.findall(".//app"):
+
+    # Handle namespace dynamically
+    ns = {"ns": root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
+
+    for app in root.findall(".//ns:app", ns):
         if app.get("app_name") == app_name:
             return app.get("app_id")
 
