@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 import os
 import argparse
@@ -15,7 +16,7 @@ headers = {"User-Agent": "Veracode Detailed Report Fetcher"}
 
 
 def resolve_app_id(api_base, app_name):
-    """Resolve app_id given an app_name."""
+    """Resolve app_id given an app_name, correctly handling XML namespace."""
     print(f"Resolving app_id for app_name='{app_name}' ...")
     try:
         resp = requests.get(
@@ -26,7 +27,11 @@ def resolve_app_id(api_base, app_name):
         resp.raise_for_status()
         root = ET.fromstring(resp.text)
 
-        for app in root.findall(".//app"):
+        # Handle default namespace
+        ns = {'v': root.tag.split('}')[0].strip('{')}
+
+        # Find all app elements with namespace
+        for app in root.findall(".//v:app", ns):
             if app.get("app_name") == app_name:
                 app_id = app.get("app_id")
                 print(f"✅ Found app_id={app_id} for app_name={app_name}")
@@ -53,7 +58,9 @@ def get_build_id(api_base, app_id):
         response.raise_for_status()
 
         root = ET.fromstring(response.text)
-        build = root.find(".//build")
+        # Handle default namespace
+        ns = {'v': root.tag.split('}')[0].strip('{')}
+        build = root.find(".//v:build", ns)
         if build is not None and "build_id" in build.attrib:
             build_id = build.attrib["build_id"]
             print(f"✅ Found build_id={build_id}")
