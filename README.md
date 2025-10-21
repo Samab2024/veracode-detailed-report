@@ -30,10 +30,8 @@ pip install .
 ## ⚙️ Usage
 ```
 Command-line:
-Once installed, you can run the CLI command:
-veracode-report <app_id_or_name> <report_type> [OPTIONS]
 
-Arguments
+veracode-report <app_id> <report_type>
 
 | Short | Long           | Required                | Description                    | Example                  |
 | ----- | -------------- | ----------------------- | ------------------------------ | ------------------------ |
@@ -57,14 +55,12 @@ veracode-report -n "test_app" -f PDF -o ~/Downloads -p test_
 Fetch a PDF report by app name (EU region)
 veracode-report -n "My App EU" -f PDF -r eu -o ~/Downloads/ -p test_
 
-Programmatic (Python)
+Programmatic (Python):
 
 from veracode_report.get_detailed_report import get_build_id, fetch_detailed_report
 
-api_base = "https://analysiscenter.veracode.com"
-app_id = "2223648"
-build_id = get_build_id(api_base, app_id)
-fetch_detailed_report(api_base, build_id, "XML", "./reports", "veracode_")
+build_id = get_build_id("2223648")
+fetch_detailed_report(build_id, "PDF")
 ```
 ---
 

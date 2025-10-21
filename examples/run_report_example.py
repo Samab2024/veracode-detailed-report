@@ -50,4 +50,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    app_id = "2223648"
+    report_type = "XML"  # or "PDF"
+    build_id = get_build_id(app_id)
+    fetch_detailed_report(build_id, report_type)
