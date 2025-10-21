@@ -34,8 +34,8 @@ veracode-report <app_id_or_name> <report_type> [OPTIONS]
 
 Arguments
 
-<app_id_or_name>	Veracode Application ID or Name
-<report_type>	Type of report to fetch (XML or PDF)
+--app_id or --app_name	Veracode Application ID or Name
+--format	Type of report to fetch (XML or PDF)
 
 Optional Flags
 
@@ -46,10 +46,10 @@ Optional Flags
 Examples
 
 Fetch an XML report by app ID (US region)
-veracode-report 2223648 XML
+veracode-report --app_id 2223648 --format XML
 
 Fetch a PDF report by app name (EU region)
-veracode-report "MyApp" PDF --region eu --output_dir ./out --prefix build_
+veracode-report --app_name "test_java" --format PDF --output_dir ~/Downloads/ --prefix test_ --region EU
 
 Programmatic (Python)
 
