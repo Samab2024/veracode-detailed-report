@@ -1,22 +1,18 @@
 """
-veracode_report package
-
-Fetches Veracode Detailed Reports (XML/PDF) using HMAC authentication.
-Supports Static and Dynamic (DAST) scans.
+veracode_report package initialization.
+Exposes core functions for fetching Veracode detailed reports.
 """
 
 from .get_detailed_report import (
-    get_app_id,
+    get_app_id_from_name,
     get_latest_build_id,
-    get_build_info,
     fetch_detailed_report,
     main,
 )
 
 __all__ = [
-    "get_app_id",
+    "get_app_id_from_name",
     "get_latest_build_id",
-    "get_build_info",
     "fetch_detailed_report",
     "main",
 ]
