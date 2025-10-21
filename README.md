@@ -10,6 +10,7 @@ Built with [veracode-api-signing](https://github.com/veracode/veracode-python-hm
 
 - 🔐 Uses Veracode HMAC authentication.
 - 🌍 Supports **US** and **EU** Veracode regions.
+- 🧩 Supports both Static and Dynamic scans
 - 🧩 Fetches the latest `build_id` automatically.
 - 🧠 Accepts either `app_id` or `app_name`.
 - 💾 Allows custom output directory and filename prefix.
@@ -41,6 +42,7 @@ veracode-report <app_id> <report_type>
 | `-r`  | `--region`     | ❌ (default: `us`)       | Veracode region (`us` or `eu`) | `-r eu`                  |
 | `-o`  | `--output_dir` | ❌ (default: `.`)        | Output directory for report    | `-o ~/Downloads/reports` |
 | `-p`  | `--prefix`     | ❌ (default: `""`)       | Optional filename prefix       | `-p test_`               |
+| `-s`  | `--scan_type`  | ❌ (default: `""`)       | Optional scan type             | `-s ds`                  |
 | `-h`  | `--help`       | ❌                       | Show help text                 | `-h`                     |
 
 Examples
@@ -50,7 +52,7 @@ By app_id
 veracode-report -i 1234567 -f XML
 
 By app_name
-veracode-report -n "test_app" -f PDF -o ~/Downloads -p test_
+veracode-report -n "test_app" -f PDF -o ~/Downloads -p test_ -s ds
 
 Fetch a PDF report by app name (EU region)
 veracode-report -n "My App EU" -f PDF -r eu -o ~/Downloads/ -p test_
