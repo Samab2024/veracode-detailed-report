@@ -9,16 +9,25 @@ import requests
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 from veracode_xml.helpers import get_api_base, find_app_by_name, save_output, pretty_print_xml
 
+HELP_TEXT = "Fetch detailed info for a specific Veracode application by app_id."
 
-def add_subparser(subparsers):
-    parser = subparsers.add_parser(
-        "app_info",
-        help="Fetch detailed information about a Veracode application",
+def setup_parser(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "-a", "--app_id",
+        required=True,
+        help="Application ID (integer). Example: 2477056"
     )
-    parser.add_argument("-a", "--app_id", help="Veracode application ID")
-    parser.add_argument("-n", "--app_name", help="Veracode application name (alternate to --app_id)")
-    parser.add_argument("-r", "--region", help="Veracode region (us, eu, us_fed)")
-    parser.set_defaults(func=run)
+    parser.add_argument(
+        "-r", "--region",
+        default="us",
+        choices=["us", "eu", "us_fed"],
+        help="Region for Veracode platform (default: us)."
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Print full XML response."
+    )
 
 
 def run(args):
