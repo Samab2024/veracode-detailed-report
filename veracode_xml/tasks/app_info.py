@@ -2,7 +2,7 @@
 veracode_xml.tasks.app_info
 Fetch detailed information for a specific Veracode application ID via XML API.
 """
-
+import os
 import requests
 import xml.etree.ElementTree as ET
 import sys
