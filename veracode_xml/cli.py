@@ -1,39 +1,40 @@
 #!/usr/bin/env python3
 import argparse
 import sys
-from veracode_xml.tasks import detailed_report
+import importlib
 
-# Task registry
-TASKS = {
-    "detailed_report": detailed_report.run,
+# Map task names to modules
+TASK_MAP = {
+    "detailed_report": "tasks.detailed_report",
+    "app_list": "tasks.app_list",
+    "app_info": "tasks.app_info",
+    "build_list": "tasks.build_list",
+    "build_info": "tasks.build_info",
 }
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="veracode-xml",
-        description="Unified CLI for Veracode XML API operations."
+        description="Unified CLI for Veracode XML API operations.",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     parser.add_argument(
         "-t", "--task",
+        choices=list(TASK_MAP.keys()),
         required=True,
-        choices=TASKS.keys(),
-        help="Specify task to run (e.g., detailed_report)"
+        help="Specify task to run. Supported tasks:\n" +
+             "\n".join([f"  {k}" for k in TASK_MAP.keys()])
     )
-    parser.add_argument("-a", "--app_id", help="Veracode Application ID")
-    parser.add_argument("-n", "--app_name", help="Veracode Application Name")
-    parser.add_argument("-f", "--format", choices=["XML", "PDF"], required=True, help="Report format")
-    parser.add_argument("-s", "--scan_type", choices=["ss", "ds"], help="Scan type: ss (Static), ds (Dynamic)")
-    parser.add_argument("-o", "--output_dir", default=".", help="Output directory for reports")
-    parser.add_argument("-p", "--prefix", default="", help="Filename prefix")
 
-    args = parser.parse_args()
+    # Only parse known args here; each task will handle its own parameters
+    args, unknown = parser.parse_known_args()
 
-    try:
-        TASKS[args.task](args)
-    except Exception as e:
-        print(f"❌ Error executing task '{args.task}': {e}")
-        sys.exit(1)
+    # Import task dynamically
+    task_module = importlib.import_module(TASK_MAP[args.task])
+
+    # Invoke the task's run() function, passing all args including unknown
+    # Each task should have its own ArgumentParser for task-specific args
+    task_module.run(sys.argv[1:])  # pass full CLI args for task parser
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
