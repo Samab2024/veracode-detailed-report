@@ -110,6 +110,7 @@ def find_app_by_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
     """
     url = endpoint_getapplist(region)
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+    print(response)
 
     if response.status_code != 200:
         print(f"❌ Failed to fetch app list ({response.status_code})")
