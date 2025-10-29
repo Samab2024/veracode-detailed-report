@@ -1,5 +1,14 @@
 from ..utils.api_helpers import get_veracode_session, resolve_app_id, get_latest_build_id
 
+HELP_TEXT = "Fetch build info for a specific build or latest build."
+
+def setup_parser(parser):
+    parser.add_argument("-i", "--app_id", help="Veracode App ID (required if --app_name not used)")
+    parser.add_argument("-n", "--app_name", help="Veracode App Name (required if --app_id not used)")
+    parser.add_argument("-b", "--build_id", help="Specific build ID (optional; fetch latest if omitted)")
+    parser.add_argument("-s", "--scan_type", choices=["ss","ds"], default="ss", help="Scan type (ss=Static, ds=Dynamic)")
+    parser.add_argument("-r", "--region", choices=["us","eu","gov"], default="us", help="Region for API requests")
+
 def run(args):
     """
     Fetches build info for a given build_id or the latest build for the app.
