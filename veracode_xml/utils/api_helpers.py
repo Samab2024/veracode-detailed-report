@@ -126,3 +126,35 @@ def find_app_by_name(app_name, region=None):
         if app_name.lower() in name.lower():
             matches.append({"app_id": app.attrib["app_id"], "app_name": name})
     return matches
+
+def save_output(content: str, args, task_name: str):
+    """
+    Save API response content to a file.
+    File name: <prefix><task_name>_<app_id or app_name>.xml
+    """
+    output_dir = ensure_output_dir(getattr(args, "output_dir", DEFAULT_OUTPUT_DIR))
+    prefix = getattr(args, "prefix", "")
+    identifier = getattr(args, "app_id", getattr(args, "app_name", "output"))
+    ext = "xml"  # default save as XML; PDF tasks can override in their module
+
+    filename = f"{prefix}{task_name}_{identifier}.{ext}"
+    file_path = os.path.join(output_dir, filename)
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    print(f"✅ Saved output to {file_path}")
+    return file_path
+
+
+def pretty_print_xml(xml_string: str):
+    """
+    Pretty-print XML to console.
+    """
+    try:
+        dom = xml.dom.minidom.parseString(xml_string)
+        pretty = dom.toprettyxml()
+        print(pretty)
+    except Exception:
+        # fallback if parsing fails
+        print(xml_string)
