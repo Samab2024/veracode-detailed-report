@@ -101,3 +101,28 @@ def fetch_detailed_report(app_id: str, build_id: str, format_type: str, output_d
         f.write(resp.content)
 
     return filepath
+
+def find_app_by_name(app_name, region=None):
+    """
+    Returns a list of matching apps (partial match supported).
+    Each item is a dict with app_id and app_name.
+    """
+    import requests
+    from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+
+    api_base = get_api_base(region)
+    url = f"{api_base}/api/5.0/getapplist.do"
+    response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+
+    if response.status_code != 200:
+        print(f"❌ Failed to fetch app list ({response.status_code})")
+        return []
+
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(response.text)
+    matches = []
+    for app in root.findall(".//application"):
+        name = app.attrib.get("app_name", "")
+        if app_name.lower() in name.lower():
+            matches.append({"app_id": app.attrib["app_id"], "app_name": name})
+    return matches
