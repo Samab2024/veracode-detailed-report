@@ -5,11 +5,11 @@ import importlib
 
 # Map task names to modules
 TASK_MAP = {
-    "detailed_report": "tasks.detailed_report",
-    "app_list": "tasks.app_list",
-    "app_info": "tasks.app_info",
-    "build_list": "tasks.build_list",
-    "build_info": "tasks.build_info",
+    "detailed_report": detailed_report.run,
+    "app_list": app_list.run,
+    "app_info": app_info.run,
+    "build_list": build_list.run,
+    "build_info": build_info.run,
 }
 
 def main():
