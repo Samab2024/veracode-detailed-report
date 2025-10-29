@@ -1,41 +1,46 @@
-import sys
-import requests
-import xml.etree.ElementTree as ET
-from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
-from veracode_xml.config import get_api_base
+"""
+List all applications in the Veracode account.
+Reference: https://docs.veracode.com/r/r_getapplist
+"""
 
-HELP_TEXT = "📋 List all applications in your Veracode account"
+import xml.etree.ElementTree as ET
+import requests
+from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+from veracode_xml.config import endpoint_getapplist
+
+HELP_TEXT = "Fetch list of all applications in your Veracode account."
 
 def setup_parser(parser):
     parser.add_argument(
-        "-r", "--region",
-        choices=["us", "eu", "gov"],
-        default="us",
-        help="Region to use (default: us)"
+        "-r", "--region", default="us", help="Veracode region (us, eu, us_fed)"
     )
 
 def run(args):
-    api_base = get_api_base(args.region)
-    url = f"{api_base}/api/5.0/getapplist.do"
+    url = endpoint_getapplist(args.region)
+    print(f"📡 Fetching application list from {url} ...")
 
-    try:
-        response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"❌ Failed to fetch app list:\n{e}")
-        sys.exit(1)
-
-    root = ET.fromstring(response.text)
-    ns = {"ns": "https://analysiscenter.veracode.com/schema/5.0/applist"}
-
-    apps = root.findall(".//ns:app", ns)
-    if not apps:
-        print("⚠️  No applications found.")
+    response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+    if response.status_code != 200:
+        print(f"❌ API request failed: {response.status_code}")
+        print(response.text)
         return
 
-    print(f"✅ Found {len(apps)} applications:\n")
-    for app in apps:
-        app_id = app.get("app_id")
-        app_name = app.get("app_name")
-        policy = app.get("policy_name", "N/A")
-        print(f" - {app_name} (ID: {app_id}) | Policy: {policy}")
+    # Parse XML safely (handle namespace)
+    try:
+        root = ET.fromstring(response.text)
+        ns = {"ns": root.tag.split("}")[0].strip("{")} if "}" in root.tag else {}
+
+        apps = root.findall(".//ns:app", ns) or root.findall(".//app")
+        if not apps:
+            print("⚠️  No applications found.")
+            return
+
+        print(f"✅ Found {len(apps)} applications:\n")
+        for app in apps:
+            app_id = app.attrib.get("app_id")
+            name = app.attrib.get("app_name")
+            policy = app.attrib.get("policy_name")
+            print(f"• {name} (ID: {app_id}, Policy: {policy})")
+
+    except ET.ParseError as e:
+        print(f"❌ Failed to parse XML: {e}")
