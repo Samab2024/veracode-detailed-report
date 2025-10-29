@@ -37,19 +37,29 @@ veracode-xml -t detailed_report --app_name "My App" --format PDF \
 ```
 Parameters
 ```
-| Short | Long           | Required                 | Description                    | Example                  |
-| ----- | -------------- | ------------------------ | ------------------------------ | ------------------------ |
-| `-t`  | `--task`       | ✅                       | Veracode Action XML            | `-t detailed_report`     |
-| `-i`  | `--app_id`     | ✅ (either this or `-n`) | Veracode application ID        | `-i 1234567`             |
-| `-n`  | `--app_name`   | ✅ (either this or `-i`) | Veracode application name      | `-n "test_app"`          |
-| `-f`  | `--format`     | ✅                       | Report format (`XML` or `PDF`) | `-f PDF`                 |
-| `-r`  | `--region`     | ❌ (default: `us`)       | Veracode region (`us` or `eu`) | `-r eu`                  |
-| `-o`  | `--output_dir` | ❌ (default: `.`)        | Output directory for report    | `-o ~/Downloads/reports` |
-| `-p`  | `--prefix`     | ❌ (default: `""`)       | Optional filename prefix       | `-p test_`               |
-| `-s`  | `--scan_type`  | ❌ (default: `ss`)       | Optional scan type             | `-s ds`                  |
-| `-h`  | `--help`       | ❌                       | Show help text                 | `-h`                     |
+| Short | Long          | Required               | Description                                  |
+|-------|---------------|------------------------|----------------------------------------------|
+| `-t`  | `--task`      | ✅                      | Task to execute (e.g. `detailed_report`)     |
+| `-i`  | `--app_id`    | ⛔ (either this or `-n`)| Veracode Application ID                      |
+| `-n`  | `--app_name`  | ⛔ (either this or `-i`)| Veracode Application Name                    |
+| `-f`  | `--format`    | ✅                      | Report format (`XML` or `PDF`)               |
+| `-s`  | `--scan_type` | ⛔ (default: `ss`)      | Scan type: `ss` = Static, `ds` = Dynamic     |
+| `-r`  | `--region`    | ❌ (default: `us`)      | Region (`us` or `eu`)                        |
+| `-o`  | `--output_dir`| ❌ (default: `.`)       | Directory to save report                     |
+| `-p`  | `--prefix`    | ❌                      | Filename prefix (e.g. `test_`)               |
 ```
 
+---
+## 🧩 Supported Tasks
+```
+| Task                         | Meaning                                         |
+| ---------------------------- | ----------------------------------------------- |
+| 🧾 `detailed_report`         | Represents a generated detailed report/document |
+| 📋 `app_list`                | Listing or viewing applications                 |
+| 📘 `build_list`              | Represents builds under application             |
+| 🧱 `build_info`              | Represents build info for specific build        |
+| ⚙️ `scan_summary` *(future)* | Scan summary/report                             |
+```
 ---
 
 ## 📘 Examples
