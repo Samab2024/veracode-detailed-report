@@ -3,6 +3,7 @@ import requests
 import xml.etree.ElementTree as ET
 from veracode_xml.config import (
     endpoint_getapplist,
+    endpoint_getappinfo,
     endpoint_getbuildlist,
     endpoint_getbuildinfo,
     endpoint_detailedreport_xml,
@@ -107,12 +108,7 @@ def find_app_by_name(app_name, region=None):
     Returns a list of matching apps (partial match supported).
     Each item is a dict with app_id and app_name.
     """
-    import requests
-    from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
-    from veracode_xml.config import xml_api_v5_base
-
-    api_base = xml_api_v5_base(region)
-    url = f"{api_base}/api/5.0/getapplist.do"
+    url = endpoint_getappinfo(region)
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
 
     if response.status_code != 200:
