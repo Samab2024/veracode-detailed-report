@@ -102,7 +102,7 @@ def run(args):
         sys.exit(1)
 
 
-def find_app_id_by_name(app_name, region=None):
+def find_app_id_by_name(app_name, region):
     """
     Find an app_id given a full or partial app name.
     Prompts the user if multiple matches are found.
