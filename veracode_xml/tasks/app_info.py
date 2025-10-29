@@ -34,70 +34,57 @@ def setup_parser(parser: argparse.ArgumentParser):
     )
 
 
+
 def run(args):
-    try:
-        # Resolve app_id from app_name if needed
-        if not args.app_id and args.app_name:
-            print(f"🔍 Searching for application matching name: '{args.app_name}' ...")
-            app_id = find_app_id_by_name(args.app_name, args.region)
-            if not app_id:
-                print("❌ No matching applications found.")
-                sys.exit(1)
-            args.app_id = app_id
+    import sys
+    import requests
+    from veracode_xml.config import xml_api_v5_base
 
-        if not args.app_id:
-            print("❌ Either --app_id or --app_name must be provided.")
-            sys.exit(1)
+    url = xml_api_v5_base(args.region) + "getappinfo.do"
+    params = {"app_id": args.app_id}
 
-        print(f"📡 Fetching app info for app_id={args.app_id} ...")
+    print(f"📡 Fetching app info for app_id={args.app_id} ...")
+    resp = requests.get(url, params=params, auth=requests.auth.HTTPDigestAuth(
+        # expects ~/.veracode/credentials or env vars
+        os.getenv("VERACODE_API_ID"),
+        os.getenv("VERACODE_API_KEY")
+    ))
 
-        url = endpoint_getappinfo(args.region)
-        response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-
-        if response.status_code != 200:
-            print(f"❌ API request failed with status {response.status_code}: {response.text}")
-            sys.exit(1)
-
-        content = response.text
-        if "<application" not in content:
-            print("⚠️  No app info found.")
-        else:
-            pretty_print_xml(content)
-
-        # Save result
-        save_output(content, args, "app_info")
-
-    except KeyboardInterrupt:
-        print("\n🛑 Operation cancelled.")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ Error: {e}")
+    if resp.status_code != 200:
+        print(f"❌ API request failed ({resp.status_code}): {resp.text}")
         sys.exit(1)
 
+    if args.verbose:
+        print(resp.text)
 
-def find_app_id_by_name(app_name, region=None):
-    """
-    Find an app_id given a full or partial app name.
-    Prompts the user if multiple matches are found.
-    """
-    apps = find_app_by_name(app_name, region)
-    if not apps:
-        return None
+    # Parse XML with namespaces
+    root = ET.fromstring(resp.text)
+    ns = {"ns": "https://analysiscenter.veracode.com/schema/2.0/appinfo"}
 
-    if len(apps) == 1:
-        app = apps[0]
-        print(f"✅ Found application: {app['app_name']} (ID: {app['app_id']})")
-        return app["app_id"]
+    app_elem = root.find("ns:application", ns)
+    if app_elem is None:
+        print("⚠️  No <application> element found — response may be malformed.")
+        sys.exit(1)
 
-    # Multiple matches
-    print("\n⚠️  Multiple matches found:")
-    for i, app in enumerate(apps, 1):
-        print(f"  [{i}] {app['app_name']} (ID: {app['app_id']})")
+    # Extract details
+    app_info = {
+        "app_id": app_elem.attrib.get("app_id"),
+        "app_name": app_elem.attrib.get("app_name"),
+        "business_criticality": app_elem.attrib.get("business_criticality"),
+        "policy": app_elem.attrib.get("policy"),
+        "policy_updated_date": app_elem.attrib.get("policy_updated_date"),
+        "teams": app_elem.attrib.get("teams"),
+        "business_unit": app_elem.attrib.get("business_unit"),
+        "modified_date": app_elem.attrib.get("modified_date"),
+    }
 
-    while True:
-        choice = input("Enter the number of the application you want to use: ").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(apps):
-            selected = apps[int(choice) - 1]
-            print(f"✅ Selected: {selected['app_name']} (ID: {selected['app_id']})")
-            return selected["app_id"]
-        print("Invalid choice. Please try again.")
+    print("\n✅ Application Info:")
+    for k, v in app_info.items():
+        print(f"  {k:22} : {v or '-'}")
+
+    # Optional: print custom fields
+    custom_fields = app_elem.findall("ns:customfield", ns)
+    if custom_fields:
+        print("\n🧩 Custom Fields:")
+        for cf in custom_fields:
+            print(f"  {cf.attrib['name']}: {cf.attrib.get('value', '') or '-'}")
