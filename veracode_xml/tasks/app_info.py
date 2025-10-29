@@ -8,7 +8,7 @@ import sys
 import requests
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 from veracode_xml.utils.api_helpers import find_app_by_name, save_output, pretty_print_xml
-from veracode_xml.config import xml_api_v5_base
+from veracode_xml.config import endpoint_getappinfo
 
 HELP_TEXT = "Fetch detailed info for a specific Veracode application by app_id."
 
