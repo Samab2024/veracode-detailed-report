@@ -1,41 +1,45 @@
-# Veracode Detailed Report Fetcher
+# 🧩 Veracode XML CLI
 
-A Python utility to fetch **Veracode Detailed Reports (XML or PDF)** using HMAC authentication.
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Veracode API](https://img.shields.io/badge/veracode-xml--api-orange)](https://docs.veracode.com/r/c_api_main)
 
-Built with [veracode-api-signing](https://github.com/veracode/veracode-python-hmac-example).
+A unified and modular **CLI tool** for interacting with the [Veracode XML APIs](https://docs.veracode.com/r/c_api_main) —  
+fetch detailed reports, builds, and more — all secured with **HMAC authentication**.
 
 ---
 
 ## 🚀 Features
-
-- 🔐 Uses Veracode HMAC authentication.
-- 🌍 Supports **US** and **EU** Veracode regions.
-- 🧩 Supports both Static and Dynamic scans
-- 🧩 Fetches the latest `build_id` automatically.
-- 🧠 Accepts either `app_id` or `app_name`.
-- 💾 Allows custom output directory and filename prefix.
-- 💻 Works as both a CLI tool and Python module.
+- 🧱 Modular task-based design (e.g. `detailed_report`, `summary`, etc.)
+- 🔄 Supports both **Static (SS)** and **Dynamic (DS)** scan types
+- 📥 Auto-detects latest build for selected app
+- 📂 Download reports in **XML** or **PDF**
+- 🌍 Supports US, EU, and Gov regions
+- 🧩 Clean structure and reusable modules
 
 ---
 
-## 🧩 Installation
-```
-bash
-git clone https://github.com/Samab2024/veracode-detailed-report.git
-cd veracode-detailed-report
+## ⚙️ Installation
+
+```bash
+git clone https://github.com/Samab2024/veracode-xml.git
+cd veracode-xml
 pip install -r requirements.txt
 pip install .
 ```
+
 ---
 
-## ⚙️ Usage
+## 🧠 CLI Usage
+
+veracode-xml -t detailed_report --app_name "My App" --format PDF \
+    --scan_type ds --output_dir ~/Downloads --prefix myapp_
+
+Parameters
 ```
-Command-line:
-
-veracode-report <app_id> <report_type>
-
 | Short | Long           | Required                | Description                    | Example                  |
 | ----- | -------------- | ----------------------- | ------------------------------ | ------------------------ |
+| `-t`  | `--task`       | ✅                       | Veracode Action XML            | `-t detailed_report`     |
 | `-i`  | `--app_id`     | ✅ (either this or `-n`) | Veracode application ID        | `-i 1234567`             |
 | `-n`  | `--app_name`   | ✅ (either this or `-i`) | Veracode application name      | `-n "test_app"`         |
 | `-f`  | `--format`     | ✅                       | Report format (`XML` or `PDF`) | `-f PDF`                 |
@@ -44,42 +48,87 @@ veracode-report <app_id> <report_type>
 | `-p`  | `--prefix`     | ❌ (default: `""`)       | Optional filename prefix       | `-p test_`               |
 | `-s`  | `--scan_type`  | ❌ (default: `ss`)       | Optional scan type             | `-s ds`                  |
 | `-h`  | `--help`       | ❌                       | Show help text                 | `-h`                     |
-
-Examples
-
-Fetch an XML report by app ID (US region)
-By app_id
-veracode-report -i 1234567 -f XML
-
-By app_name
-veracode-report -n "test_app" -f PDF -o ~/Downloads -p test_ -s ds
-
-Fetch a PDF report by app name (EU region)
-veracode-report -n "My App EU" -f PDF -r eu -o ~/Downloads/ -p test_
-
-Programmatic (Python):
-
-from veracode_report.get_detailed_report import get_build_id, fetch_detailed_report
-
-build_id = get_build_id("2223648")
-fetch_detailed_report(build_id, "PDF")
 ```
+
 ---
 
-## 🪪 Authentication
+## 📘 Examples
+
+🔹 Get Static Scan Report (XML)
 ```
-Requires Veracode HMAC credentials:
+veracode-xml -t detailed_report -n "Core Banking App" -f XML -s ss
+
+🔸 Get Dynamic Scan Report (PDF)
+
+veracode-xml -t detailed_report -n "Customer Portal" -f PDF -s ds \
+  -o ~/Downloads -p dyn_
+```
+
+---
+
+## 🔐 Authentication
+```
+Store your Veracode HMAC credentials securely in:
 
 ~/.veracode/credentials
 
-with:
-
+ini
+Copy code
 [default]
 veracode_api_key_id = YOUR_KEY_ID
 veracode_api_key_secret = YOUR_KEY_SECRET
+Your credentials are automatically loaded using the Veracode Python HMAC library.
 ```
+
 ---
 
-## 📜 License
+## 🧱 Project Structure
+```
+veracode_xml/
+├── __init__.py
+├── cli.py                  # CLI entry point
+├── config.py               # API endpoint and region config
+├── tasks/
+│   ├── __init__.py
+│   └── detailed_report.py  # First supported task
+└── utils/
+    ├── __init__.py
+    └── api_helpers.py      # Common HMAC + API XML logic
+```
 
-MIT License
+---
+
+## 🧩 Adding New Tasks
+
+Each task lives inside the tasks/ folder and exposes a run(args) function.
+```
+Example (tasks/my_new_task.py):
+
+def run(args):
+    print(f"Running new task: {args.task}")
+Then invoke:
+
+veracode-xml -t my_new_task
+```
+
+---
+
+## 🧪 Development Setup
+```
+# From project root
+python -m veracode_xml.cli -t detailed_report -n "My App" -f XML -s ds
+
+Or install in editable mode:
+
+pip install -e .
+```
+
+---
+
+## 🪪 License
+
+MIT License © 2025 Samab2024
+
+```
+Note:
+This tool is not affiliated with Veracode and is intended for automation and reporting purposes using their public APIs.
