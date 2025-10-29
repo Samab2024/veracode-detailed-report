@@ -3,7 +3,7 @@ import argparse
 import sys
 import importlib
 
-# Map task names to modules
+# Map task names to their module paths
 TASK_MAP = {
     "detailed_report": "tasks.detailed_report",
     "app_list": "tasks.app_list",
@@ -15,26 +15,35 @@ TASK_MAP = {
 def main():
     parser = argparse.ArgumentParser(
         description="Unified CLI for Veracode XML API operations.",
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=argparse.RawTextHelpFormatter
     )
 
-    parser.add_argument(
-        "-t", "--task",
-        choices=list(TASK_MAP.keys()),
-        required=True,
-        help="Specify task to run. Supported tasks:\n" +
-             "\n".join([f"  {k}" for k in TASK_MAP.keys()])
-    )
+    # Top-level subparsers for tasks
+    subparsers = parser.add_subparsers(dest="task", title="Available tasks", metavar="{task}", help="Choose one task to run")
 
-    # Only parse known args here; each task will handle its own parameters
-    args, unknown = parser.parse_known_args()
+    # Add subparser for each task dynamically
+    for task_name, module_path in TASK_MAP.items():
+        module = importlib.import_module(module_path)
+        task_parser = subparsers.add_parser(
+            task_name,
+            help=getattr(module, "HELP_TEXT", ""),
+            description=getattr(module, "HELP_TEXT", "")
+        )
+        # Each task defines its own setup_parser() to add arguments
+        module.setup_parser(task_parser)
 
-    # Import task dynamically
+    # Parse args
+    args = parser.parse_args()
+
+    # If no task provided, show top-level help
+    if args.task is None:
+        parser.print_help()
+        sys.exit(1)
+
+    # Dynamically import and run the selected task
     task_module = importlib.import_module(TASK_MAP[args.task])
+    task_module.run(args)
 
-    # Invoke the task's run() function, passing all args including unknown
-    # Each task should have its own ArgumentParser for task-specific args
-    task_module.run(sys.argv[1:])  # pass full CLI args for task parser
 
 if __name__ == "__main__":
     sys.exit(main())
