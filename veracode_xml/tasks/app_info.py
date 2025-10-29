@@ -5,22 +5,30 @@ Reference: https://docs.veracode.com/r/r_getappinfo
 
 import argparse
 import sys
+import os
 import requests
+import xml.etree.ElementTree as ET
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
-from veracode_xml.utils.api_helpers import find_app_by_name, save_output, pretty_print_xml
-from veracode_xml.config import endpoint_getappinfo
+from veracode_xml.utils.api_helpers import find_app_by_name, save_output, pretty_print_xml, ensure_output_dir
+from veracode_xml.config import xml_api_v5_base
 
-HELP_TEXT = "Fetch detailed info for a specific Veracode application by app_id."
+HELP_TEXT = "Fetch detailed info for a specific Veracode application by app_id or app_name."
+
 
 def setup_parser(parser: argparse.ArgumentParser):
-    parser.add_argument(
+    """
+    Setup argparse for this task. Either --app_id or --app_name must be provided.
+    """
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
         "-a", "--app_id",
-        help="Application ID (integer) (alternate to --app_name). Example: 2477056"
+        help="Application ID (integer). Alternate to --app_name. Example: 2477056"
     )
-    parser.add_argument(
+    group.add_argument(
         "-n", "--app_name",
-        help="Veracode application name (alternate to --app_id). Example: verademo"
+        help="Veracode application name. Alternate to --app_id. Example: verademo"
     )
+
     parser.add_argument(
         "-r", "--region",
         default="us",
@@ -32,59 +40,107 @@ def setup_parser(parser: argparse.ArgumentParser):
         action="store_true",
         help="Print full XML response."
     )
-
+    parser.add_argument(
+        "-o", "--output_dir",
+        default=None,
+        help="Directory to save the output XML (default: configured output dir)."
+    )
+    parser.add_argument(
+        "-p", "--prefix",
+        default="",
+        help="Filename prefix for saved output."
+    )
 
 
 def run(args):
-    import sys
-    import requests
-    from veracode_xml.config import xml_api_v5_base
+    """
+    Run the app_info task.
+    Resolves app_id from app_name if necessary, fetches XML, prints and saves.
+    """
+    try:
+        # Resolve app_id from app_name if needed
+        if not args.app_id and args.app_name:
+            print(f"🔍 Searching for application matching name: '{args.app_name}' ...")
+            app_id = find_app_id_by_name(args.app_name, args.region)
+            if not app_id:
+                print("❌ No matching applications found.")
+                sys.exit(1)
+            args.app_id = app_id
 
-    url = xml_api_v5_base(args.region) + "getappinfo.do"
-    params = {"app_id": args.app_id}
+        if not args.app_id:
+            print("❌ Either --app_id or --app_name must be provided.")
+            sys.exit(1)
 
-    print(f"📡 Fetching app info for app_id={args.app_id} ...")
-    resp = requests.get(url, params=params, auth=requests.auth.HTTPDigestAuth(
-        # expects ~/.veracode/credentials or env vars
-        os.getenv("VERACODE_API_ID"),
-        os.getenv("VERACODE_API_KEY")
-    ))
+        print(f"📡 Fetching app info for app_id={args.app_id} ...")
 
-    if resp.status_code != 200:
-        print(f"❌ API request failed ({resp.status_code}): {resp.text}")
+        url = xml_api_v5_base(args.region) + "getappinfo.do"
+        response = requests.get(
+            url,
+            params={"app_id": args.app_id},
+            auth=RequestsAuthPluginVeracodeHMAC()
+        )
+
+        if response.status_code != 200:
+            print(f"❌ API request failed ({response.status_code}): {response.text}")
+            sys.exit(1)
+
+        content = response.text
+        if args.verbose:
+            pretty_print_xml(content)
+
+        # Parse XML to confirm presence of <application>
+        ns = {"ns": "https://analysiscenter.veracode.com/schema/2.0/appinfo"}
+        root = ET.fromstring(content)
+        app_elem = root.find("ns:application", ns)
+        if app_elem is None:
+            print("⚠️  No <application> element found — response may be malformed.")
+        else:
+            print("\n✅ Application Info:")
+            for key in ["app_id", "app_name", "business_criticality", "policy",
+                        "policy_updated_date", "teams", "business_unit", "modified_date"]:
+                print(f"  {key:22} : {app_elem.attrib.get(key, '-') or '-'}")
+
+            # Optional: custom fields
+            custom_fields = app_elem.findall("ns:customfield", ns)
+            if custom_fields:
+                print("\n🧩 Custom Fields:")
+                for cf in custom_fields:
+                    print(f"  {cf.attrib.get('name','-')}: {cf.attrib.get('value','-') or '-'}")
+
+        # Save XML output
+        save_output(content, args, "app_info")
+
+    except KeyboardInterrupt:
+        print("\n🛑 Operation cancelled.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error: {e}")
         sys.exit(1)
 
-    if args.verbose:
-        print(resp.text)
 
-    # Parse XML with namespaces
-    root = ET.fromstring(resp.text)
-    ns = {"ns": "https://analysiscenter.veracode.com/schema/2.0/appinfo"}
+def find_app_id_by_name(app_name, region=None):
+    """
+    Find an app_id given a full or partial app name.
+    Prompts the user if multiple matches are found.
+    """
+    apps = find_app_by_name(app_name, region)
+    if not apps:
+        return None
 
-    app_elem = root.find("ns:application", ns)
-    if app_elem is None:
-        print("⚠️  No <application> element found — response may be malformed.")
-        sys.exit(1)
+    if len(apps) == 1:
+        app = apps[0]
+        print(f"✅ Found application: {app['app_name']} (ID: {app['app_id']})")
+        return app["app_id"]
 
-    # Extract details
-    app_info = {
-        "app_id": app_elem.attrib.get("app_id"),
-        "app_name": app_elem.attrib.get("app_name"),
-        "business_criticality": app_elem.attrib.get("business_criticality"),
-        "policy": app_elem.attrib.get("policy"),
-        "policy_updated_date": app_elem.attrib.get("policy_updated_date"),
-        "teams": app_elem.attrib.get("teams"),
-        "business_unit": app_elem.attrib.get("business_unit"),
-        "modified_date": app_elem.attrib.get("modified_date"),
-    }
+    # Multiple matches found
+    print("\n⚠️  Multiple matches found:")
+    for i, app in enumerate(apps, 1):
+        print(f"  [{i}] {app['app_name']} (ID: {app['app_id']})")
 
-    print("\n✅ Application Info:")
-    for k, v in app_info.items():
-        print(f"  {k:22} : {v or '-'}")
-
-    # Optional: print custom fields
-    custom_fields = app_elem.findall("ns:customfield", ns)
-    if custom_fields:
-        print("\n🧩 Custom Fields:")
-        for cf in custom_fields:
-            print(f"  {cf.attrib['name']}: {cf.attrib.get('value', '') or '-'}")
+    while True:
+        choice = input("Enter the number of the application you want to use: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(apps):
+            selected = apps[int(choice) - 1]
+            print(f"✅ Selected: {selected['app_name']} (ID: {selected['app_id']})")
+            return selected["app_id"]
+        print("Invalid choice. Please try again.")
