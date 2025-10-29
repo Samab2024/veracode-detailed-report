@@ -1,4 +1,4 @@
-from ..utils.api_helpers import get_veracode_session, resolve_app_id
+from veracode_xml.utils.api_helpers import get_veracode_session, resolve_app_id
 
 HELP_TEXT = "Fetch detailed information for a specific application."
 
