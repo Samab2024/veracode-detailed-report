@@ -1,2 +1,4 @@
-# tasks/__init__.py
-# Required to make `tasks` a Python package
+"""
+Task modules for veracode-xml.
+Each task implements a `run(args)` entrypoint for CLI execution.
+"""
