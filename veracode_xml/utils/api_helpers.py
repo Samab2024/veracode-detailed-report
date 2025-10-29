@@ -108,7 +108,7 @@ def find_app_by_name(app_name, region=None):
     Returns a list of matching apps (partial match supported).
     Each item is a dict with app_id and app_name.
     """
-    url = endpoint_getappinfo(region)
+    url = endpoint_getapplist(region)
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
 
     if response.status_code != 200:
