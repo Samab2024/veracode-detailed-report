@@ -28,27 +28,11 @@ def setup_parser(parser: argparse.ArgumentParser):
         "-n", "--app_name",
         help="Veracode application name. Alternate to --app_id. Example: verademo"
     )
-
     parser.add_argument(
         "-r", "--region",
         default="us",
         choices=["us", "eu", "us_fed"],
         help="Region for Veracode platform (default: us)."
-    )
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Print full XML response."
-    )
-    parser.add_argument(
-        "-o", "--output_dir",
-        default=None,
-        help="Directory to save the output XML (default: configured output dir)."
-    )
-    parser.add_argument(
-        "-p", "--prefix",
-        default="",
-        help="Filename prefix for saved output."
     )
 
 
