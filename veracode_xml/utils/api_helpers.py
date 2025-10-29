@@ -129,10 +129,12 @@ def save_output(content: str, args, task_name: str):
     Save API response content to a file.
     File name: <prefix><task_name>_<app_id or app_name>.xml
     """
-    output_dir = ensure_output_dir(getattr(args, "output_dir", DEFAULT_OUTPUT_DIR))
+    output_dir = getattr(args, "output_dir", None) or os.path.expanduser("~/veracode_reports")
+    os.makedirs(output_dir, exist_ok=True)
+
     prefix = getattr(args, "prefix", "")
     identifier = getattr(args, "app_id", getattr(args, "app_name", "output"))
-    ext = "xml"  # default save as XML; PDF tasks can override in their module
+    ext = "xml"  # default save as XML; PDF tasks can override
 
     filename = f"{prefix}{task_name}_{identifier}.{ext}"
     file_path = os.path.join(output_dir, filename)
