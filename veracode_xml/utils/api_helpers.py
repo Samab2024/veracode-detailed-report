@@ -1,87 +1,103 @@
+import os
 import requests
 import xml.etree.ElementTree as ET
-import os
+from veracode_xml.config import (
+    endpoint_getapplist,
+    endpoint_getbuildlist,
+    endpoint_getbuildinfo,
+    endpoint_detailedreport_xml,
+    endpoint_detailedreport_pdf,
+    DEFAULT_REGION,
+)
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 
-BASE_URL = "https://analysiscenter.veracode.com/api"
+def _parse_xml_with_ns(text):
+    """
+    Parse XML text and return tuple (root, ns_map)
+    where ns_map is a dict like {'ns': <namespace_uri>} if namespace exists.
+    """
+    root = ET.fromstring(text)
+    ns_map = {}
+    if "}" in root.tag:
+        uri = root.tag.split("}")[0].strip("{")
+        ns_map = {"ns": uri}
+    return root, ns_map
 
-def get_app_id_from_name(app_name):
-    """Get app_id using app_name."""
-    try:
-        url = f"{BASE_URL}/5.0/getapplist.do"
-        response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-        response.raise_for_status()
-        root = ET.fromstring(response.text)
+def get_app_id_from_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
+    """Look up app_id for a given application name, handling namespace correctly."""
+    url = endpoint_getapplist(region)
+    resp = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+    resp.raise_for_status()
 
-        for app in root.findall(".//app"):
-            if app.get("app_name") == app_name:
-                print(f"✅ Found app_id={app.get('app_id')}")
-                return app.get("app_id")
-        print(f"❌ App name '{app_name}' not found in your Veracode account.")
-        return None
-    except Exception as e:
-        print(f"❌ Error fetching app list: {e}")
-        return None
+    root, ns = _parse_xml_with_ns(resp.text)
+    # pick the correct tag path
+    if ns:
+        apps = root.findall(".//ns:app", ns)
+    else:
+        apps = root.findall(".//app")
 
+    for app in apps:
+        if app.get("app_name") == app_name:
+            return app.get("app_id")
 
-def get_latest_build_id(app_id, scan_type="ss"):
-    """Fetch latest build_id depending on scan type."""
-    try:
-        if scan_type == "ds":
-            url = f"{BASE_URL}/5.0/getbuildlist.do?app_id={app_id}"
-            response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-            response.raise_for_status()
-            root = ET.fromstring(response.text)
+    return None
+
+def get_latest_build_id(app_id: str, scan_type: str = "ss", region: str = DEFAULT_REGION) -> str | None:
+    """
+    Fetch latest build_id depending on scan type.
+    scan_type: "ss" (Static) or "ds" (Dynamic)
+    """
+    if scan_type == "ds":
+        url = endpoint_getbuildlist(region) + f"?app_id={app_id}"
+        resp = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+        resp.raise_for_status()
+        root, ns = _parse_xml_with_ns(resp.text)
+        if ns:
+            builds = root.findall(".//ns:build", ns)
+        else:
             builds = root.findall(".//build")
 
-            if not builds:
-                print("❌ No dynamic scan builds found.")
-                return None
+        ds_builds = [b for b in builds if b.get("dynamic_scan_type") == "ds" and b.get("policy_updated_date")]
+        if not ds_builds:
+            return None
 
-            # Select the latest by policy_updated_date
-            latest_build = max(builds, key=lambda b: b.get("policy_updated_date", ""))
-            return latest_build.get("build_id")
+        latest = max(ds_builds, key=lambda b: b.get("policy_updated_date", ""))
+        return latest.get("build_id")
 
-        # Default to static scan
-        url = f"{BASE_URL}/5.0/getbuildinfo.do?app_id={app_id}"
-        response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-        response.raise_for_status()
-        root = ET.fromstring(response.text)
-        build_elem = root.find(".//{https://analysiscenter.veracode.com/schema/4.0/buildinfo}build")
+    else:
+        url = endpoint_getbuildinfo(region) + f"?app_id={app_id}"
+        resp = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+        resp.raise_for_status()
+        root, ns = _parse_xml_with_ns(resp.text)
+
+        if ns:
+            build_elem = root.find(".//ns:build", ns)
+        else:
+            build_elem = root.find(".//build")
 
         if build_elem is not None:
             return build_elem.get("build_id")
 
-        print("❌ No static scan builds found.")
         return None
 
-    except Exception as e:
-        print(f"❌ Error fetching build list: {e}")
-        return None
+def fetch_detailed_report(app_id: str, build_id: str, format_type: str, output_dir: str, prefix: str, region: str = DEFAULT_REGION) -> str | None:
+    """Download detailed report (XML or PDF) and save locally."""
+    format_type = format_type.upper()
+    if format_type == "PDF":
+        url = endpoint_detailedreport_pdf(region) + f"?build_id={build_id}&app_id={app_id}"
+        extension = "pdf"
+    else:
+        url = endpoint_detailedreport_xml(region) + f"?build_id={build_id}&app_id={app_id}"
+        extension = "xml"
 
+    resp = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+    resp.raise_for_status()
 
-def fetch_detailed_report(app_id, build_id, format_type, output_dir, prefix):
-    """Download detailed report as XML or PDF."""
-    try:
-        if format_type == "PDF":
-            url = f"{BASE_URL}/4.0/detailedreportpdf.do?build_id={build_id}&app_id={app_id}"
-            extension = "pdf"
-        else:
-            url = f"{BASE_URL}/5.0/detailedreport.do?build_id={build_id}&app_id={app_id}"
-            extension = "xml"
+    os.makedirs(os.path.expanduser(output_dir), exist_ok=True)
+    filename = f"{prefix}{app_id}_{build_id}_report.{extension}"
+    filepath = os.path.join(os.path.expanduser(output_dir), filename)
 
-        response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-        response.raise_for_status()
+    with open(filepath, "wb") as f:
+        f.write(resp.content)
 
-        filename = f"{prefix}{app_id}_{build_id}.{extension}"
-        file_path = os.path.join(output_dir, filename)
-
-        with open(file_path, "wb") as f:
-            f.write(response.content)
-
-        print(f"✅ Report saved to {file_path}")
-        return file_path
-
-    except Exception as e:
-        print(f"❌ Failed to fetch detailed report: {e}")
-        return None
+    return filepath
