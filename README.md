@@ -37,11 +37,11 @@ veracode-xml -t detailed_report --app_name "My App" --format PDF \
 ```
 Parameters
 ```
-| Short | Long           | Required                | Description                    | Example                  |
-| ----- | -------------- | ----------------------- | ------------------------------ | ------------------------ |
+| Short | Long           | Required                 | Description                    | Example                  |
+| ----- | -------------- | ------------------------ | ------------------------------ | ------------------------ |
 | `-t`  | `--task`       | ✅                       | Veracode Action XML            | `-t detailed_report`     |
 | `-i`  | `--app_id`     | ✅ (either this or `-n`) | Veracode application ID        | `-i 1234567`             |
-| `-n`  | `--app_name`   | ✅ (either this or `-i`) | Veracode application name      | `-n "test_app"`         |
+| `-n`  | `--app_name`   | ✅ (either this or `-i`) | Veracode application name      | `-n "test_app"`          |
 | `-f`  | `--format`     | ✅                       | Report format (`XML` or `PDF`) | `-f PDF`                 |
 | `-r`  | `--region`     | ❌ (default: `us`)       | Veracode region (`us` or `eu`) | `-r eu`                  |
 | `-o`  | `--output_dir` | ❌ (default: `.`)        | Output directory for report    | `-o ~/Downloads/reports` |
