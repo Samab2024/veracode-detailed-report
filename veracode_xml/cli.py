@@ -5,11 +5,11 @@ import importlib
 
 # Map task names to their module paths
 TASK_MAP = {
-    "detailed_report": "tasks.detailed_report",
-    "app_list": "tasks.app_list",
-    "app_info": "tasks.app_info",
-    "build_list": "tasks.build_list",
-    "build_info": "tasks.build_info",
+    "detailed_report": "veracode_xml.tasks.detailed_report",
+    "app_list": "veracode_xml.tasks.app_list",
+    "app_info": "veracode_xml.tasks.app_info",
+    "build_list": "veracode_xml.tasks.build_list",
+    "build_info": "veracode_xml.tasks.build_info",
 }
 
 def main():
