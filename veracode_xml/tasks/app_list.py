@@ -39,8 +39,7 @@ def run(args):
         for app in apps:
             app_id = app.attrib.get("app_id")
             name = app.attrib.get("app_name")
-            policy = app.attrib.get("policy_name")
-            print(f"• {name} (ID: {app_id}, Policy: {policy})")
+            print(f"• {name} (ID: {app_id})")
 
     except ET.ParseError as e:
         print(f"❌ Failed to parse XML: {e}")
