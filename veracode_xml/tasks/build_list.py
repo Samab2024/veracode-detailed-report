@@ -1,40 +1,45 @@
-import sys
-import requests
-import xml.etree.ElementTree as ET
-from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
-from veracode_xml.config import get_api_base
+"""
+List all builds under a given application.
+Reference: https://docs.veracode.com/r/r_getbuildlist
+"""
 
-HELP_TEXT = "List all builds for a specific application."
+import xml.etree.ElementTree as ET
+import requests
+from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+from veracode_xml.config import endpoint_getbuildlist
+
+HELP_TEXT = "List all builds under a specific application."
 
 def setup_parser(parser):
-    parser.add_argument("-i", "--app_id", help="Veracode App ID (required if --app_name not used)")
-    parser.add_argument("-n", "--app_name", help="Veracode App Name (required if --app_id not used)")
-    parser.add_argument("-s", "--scan_type", choices=["ss","ds"], default="ss", help="Filter by scan type")
-    parser.add_argument("-r", "--region", choices=["us","eu","gov"], default="us", help="Region for API requests")
+    parser.add_argument("-a", "--app_id", required=True, help="Veracode application ID")
+    parser.add_argument("-r", "--region", default="us", help="Veracode region (us, eu, us_fed)")
 
 def run(args):
-    session = get_veracode_session(region=args.region)
-    app_id = args.app_id or resolve_app_id(args.app_name, session)
-    
-    if not app_id:
-        print(f"❌ App not found.")
-        return
-    
-    url = f"{session.api_base}/api/2.0/getbuildlist.do?app_id={app_id}"
-    response = session.get(url)
-    
+    url = endpoint_getbuildlist(args.region) + f"?app_id={args.app_id}"
+    print(f"📡 Fetching builds for app_id={args.app_id} ...")
+
+    response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
     if response.status_code != 200:
-        print(f"❌ Failed to fetch build list: {response.status_code}")
+        print(f"❌ API request failed: {response.status_code}")
+        print(response.text)
         return
-    
-    root = response.xml_root()
-    builds = root.findall(".//build", namespaces={"ns": root.nsmap.get(None)})
-    
-    if not builds:
-        print(f"⚠️ No builds found for app_id={app_id}")
-        return
-    
-    for build in builds:
-        if args.scan_type and build.attrib.get("dynamic_scan_type") != args.scan_type:
-            continue
-        print(f"{build.attrib.get('build_id')} : {build.attrib.get('version')} ({build.attrib.get('dynamic_scan_type')})")
+
+    try:
+        root = ET.fromstring(response.text)
+        ns = {"ns": root.tag.split('}')[0].strip('{')} if "}" in root.tag else {}
+
+        builds = root.findall(".//ns:build", ns) or root.findall(".//build")
+        if not builds:
+            print("⚠️  No builds found for this app.")
+            return
+
+        print(f"✅ Found {len(builds)} builds:\n")
+        for b in builds:
+            print(
+                f"• Build ID: {b.attrib.get('build_id')}, "
+                f"Version: {b.attrib.get('version')}, "
+                f"Scan Type: {b.attrib.get('dynamic_scan_type') or 'Static'}"
+            )
+
+    except ET.ParseError as e:
+        print(f"❌ Failed to parse XML: {e}")
