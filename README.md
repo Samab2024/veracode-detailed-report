@@ -82,13 +82,11 @@ Store your Veracode HMAC credentials securely in:
 
 ~/.veracode/credentials
 
-ini
-Copy code
 [default]
 veracode_api_key_id = YOUR_KEY_ID
 veracode_api_key_secret = YOUR_KEY_SECRET
-Your credentials are automatically loaded using the Veracode Python HMAC library.
 ```
+Your credentials are automatically loaded using the Veracode Python HMAC library.
 
 ---
 
