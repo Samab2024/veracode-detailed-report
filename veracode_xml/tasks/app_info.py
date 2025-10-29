@@ -16,7 +16,11 @@ def setup_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-a", "--app_id",
         required=True,
-        help="Application ID (integer). Example: 2477056"
+        help="Application ID (integer) (alternate to --app_name). Example: 2477056"
+    )
+    parser.add_argument(
+        "-n", "--app_name",
+        help="Veracode application name (alternate to --app_id). Example: verademo"
     )
     parser.add_argument(
         "-r", "--region",
@@ -48,7 +52,7 @@ def run(args):
 
         print(f"📡 Fetching app info for app_id={args.app_id} ...")
 
-        api_base = get_api_base(args.region)
+        api_base = xml_api_v5_base(args.region)
         url = f"{api_base}/api/5.0/getappinfo.do?app_id={args.app_id}"
         response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
 
