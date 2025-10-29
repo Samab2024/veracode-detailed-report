@@ -125,6 +125,9 @@ def xml_api_v4_base(region: Region = DEFAULT_REGION) -> str:
 def endpoint_getapplist(region: Region = DEFAULT_REGION) -> str:
     return xml_api_v5_base(region) + "getapplist.do"
 
+def endpoint_getappinfo(region: Region = DEFAULT_REGION) -> str:
+    return xml_api_v5_base(region) + "getappinfo.do"
+
 def endpoint_getbuildlist(region: Region = DEFAULT_REGION) -> str:
     return xml_api_v5_base(region) + "getbuildlist.do"
 
