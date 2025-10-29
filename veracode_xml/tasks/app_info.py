@@ -7,7 +7,7 @@ import argparse
 import sys
 import requests
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
-from veracode_xml.utils import save_output, pretty_print_xml
+from veracode_xml.utils.file_utils import save_output, pretty_print_xml
 from veracode_xml.helpers import get_api_base, find_app_by_name
 
 
