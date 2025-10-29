@@ -109,8 +109,9 @@ def find_app_by_name(app_name, region=None):
     """
     import requests
     from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+    from veracode_xml.config import xml_api_v5_base
 
-    api_base = get_api_base(region)
+    api_base = xml_api_v5_base(region)
     url = f"{api_base}/api/5.0/getapplist.do"
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
 
