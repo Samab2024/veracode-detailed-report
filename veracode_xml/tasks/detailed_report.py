@@ -5,6 +5,17 @@ from veracode_xml.utils.api_helpers import (
     fetch_detailed_report,
 )
 
+HELP_TEXT = "Fetch detailed report (XML/PDF) for a specific app/build."
+
+def setup_parser(parser):
+    parser.add_argument("-i", "--app_id", help="Veracode App ID (required if --app_name not used)")
+    parser.add_argument("-n", "--app_name", help="Veracode App Name (required if --app_id not used)")
+    parser.add_argument("-f", "--format", choices=["XML", "PDF"], required=True, help="Report format")
+    parser.add_argument("-s", "--scan_type", choices=["ss", "ds"], default="ss", help="Scan type (ss=Static, ds=Dynamic)")
+    parser.add_argument("-r", "--region", choices=["us","eu","gov"], default="us", help="Region for API requests")
+    parser.add_argument("-o", "--output_dir", default=".", help="Directory to save report")
+    parser.add_argument("-p", "--prefix", help="Filename prefix")
+
 def run(args):
     print("📘 Task: Fetch Detailed Report")
 
