@@ -51,8 +51,7 @@ def run(args):
 
         print(f"📡 Fetching app info for app_id={args.app_id} ...")
 
-        api_base = xml_api_v5_base(args.region)
-        url = f"{api_base}/api/5.0/getappinfo.do?app_id={args.app_id}"
+        url = endpoint_getappinfo(args.region)
         response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
 
         if response.status_code != 200:
