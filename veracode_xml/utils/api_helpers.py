@@ -103,7 +103,7 @@ def fetch_detailed_report(app_id: str, build_id: str, format_type: str, output_d
 
     return filepath
 
-def find_app_by_name(app_name, region=None):
+def find_app_by_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
     """
     Returns a list of matching apps (partial match supported).
     Each item is a dict with app_id and app_name.
