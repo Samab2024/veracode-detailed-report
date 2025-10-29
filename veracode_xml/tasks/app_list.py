@@ -1,4 +1,4 @@
-from veracode_xml.utils.api_helpers import get_veracode_session
+from ..utils.api_helpers import get_veracode_session
 
 HELP_TEXT = "List all applications in the account."
 
