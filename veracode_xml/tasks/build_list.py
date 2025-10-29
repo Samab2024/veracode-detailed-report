@@ -38,7 +38,7 @@ def run(args):
             print(
                 f"• Build ID: {b.attrib.get('build_id')}, "
                 f"Version: {b.attrib.get('version')}, "
-                f"Scan Type: {b.attrib.get('dynamic_scan_type') or 'Static'}"
+                f"Scan Type: {'Dynamic' if b.attrib.get('dynamic_scan_type') else 'Static'}"
             )
 
     except ET.ParseError as e:
