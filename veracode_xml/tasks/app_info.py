@@ -1,46 +1,41 @@
-import sys
-import requests
-import xml.etree.ElementTree as ET
-from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
-from veracode_xml.config import get_api_base
+"""
+Fetch information for a specific application.
+Reference: https://docs.veracode.com/r/r_getappinfo
+"""
 
-HELP_TEXT = "📘 Get detailed information for a specific application"
+import xml.etree.ElementTree as ET
+import requests
+from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+from veracode_xml.config import xml_api_v5_base
+
+HELP_TEXT = "Get detailed info for a specific application."
 
 def setup_parser(parser):
-    parser.add_argument(
-        "-a", "--app_id",
-        required=True,
-        help="Veracode application ID (required)"
-    )
-    parser.add_argument(
-        "-r", "--region",
-        choices=["us", "eu", "gov"],
-        default="us",
-        help="Region to use (default: us)"
-    )
+    parser.add_argument("-a", "--app_id", required=True, help="Veracode application ID")
+    parser.add_argument("-r", "--region", default="us", help="Veracode region (us, eu, us_fed)")
 
 def run(args):
-    api_base = get_api_base(args.region)
-    url = f"{api_base}/api/5.0/getappinfo.do?app_id={args.app_id}"
+    url = xml_api_v5_base(args.region) + f"getappinfo.do?app_id={args.app_id}"
+    print(f"📡 Fetching app info for app_id={args.app_id} ...")
 
-    try:
-        response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"❌ Failed to fetch app info:\n{e}")
-        sys.exit(1)
-
-    root = ET.fromstring(response.text)
-    ns = {"ns": "https://analysiscenter.veracode.com/schema/5.0/appinfo"}
-
-    app = root.find(".//ns:app", ns)
-    if app is None:
-        print("⚠️  Application not found or invalid response.")
+    response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+    if response.status_code != 200:
+        print(f"❌ API request failed: {response.status_code}")
+        print(response.text)
         return
 
-    print("\n✅ Application Info:")
-    print(f" - ID: {app.get('app_id')}")
-    print(f" - Name: {app.get('app_name')}")
-    print(f" - Policy: {app.get('policy_name')}")
-    print(f" - Teams: {app.get('business_criticality')}")
-    print(f" - Last Modified: {app.get('last_modified_date')}")
+    try:
+        root = ET.fromstring(response.text)
+        ns = {"ns": root.tag.split('}')[0].strip('{')} if "}" in root.tag else {}
+
+        app = root.find(".//ns:app", ns) or root.find(".//app")
+        if app is None:
+            print("⚠️  No app info found.")
+            return
+
+        print("✅ Application Info:")
+        for k, v in app.attrib.items():
+            print(f"  {k}: {v}")
+
+    except ET.ParseError as e:
+        print(f"❌ Failed to parse XML: {e}")
