@@ -1,4 +1,4 @@
-from veracode_xml.utils.api_helpers import get_veracode_session, resolve_app_id, get_latest_build_id
+from ..utils.api_helpers import get_veracode_session, resolve_app_id, get_latest_build_id
 
 HELP_TEXT = "Fetch build info for a specific build or latest build."
 
