@@ -1,25 +1,41 @@
-from ..utils.api_helpers import get_veracode_session
+import sys
+import requests
+import xml.etree.ElementTree as ET
+from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+from veracode_xml.config import get_api_base
 
-HELP_TEXT = "List all applications in the account."
+HELP_TEXT = "📋 List all applications in your Veracode account"
 
 def setup_parser(parser):
-    parser.add_argument("-r", "--region", choices=["us","eu","gov"], default="us", help="Region for API requests")
+    parser.add_argument(
+        "-r", "--region",
+        choices=["us", "eu", "gov"],
+        default="us",
+        help="Region to use (default: us)"
+    )
 
 def run(args):
-    session = get_veracode_session(region=args.region)
-    url = f"{session.api_base}/api/4.0/getapplist.do"
-    
-    response = session.get(url)
-    if response.status_code != 200:
-        print(f"❌ Failed to fetch app list: {response.status_code}")
-        return
-    
-    # Parse XML
-    root = response.xml_root()
-    apps = root.findall(".//app", namespaces={"ns": root.nsmap.get(None)})
+    api_base = get_api_base(args.region)
+    url = f"{api_base}/api/5.0/getapplist.do"
+
+    try:
+        response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"❌ Failed to fetch app list:\n{e}")
+        sys.exit(1)
+
+    root = ET.fromstring(response.text)
+    ns = {"ns": "https://analysiscenter.veracode.com/schema/5.0/applist"}
+
+    apps = root.findall(".//ns:app", ns)
     if not apps:
-        print("⚠️ No applications found.")
+        print("⚠️  No applications found.")
         return
-    
+
+    print(f"✅ Found {len(apps)} applications:\n")
     for app in apps:
-        print(f"{app.attrib.get('app_id')} : {app.attrib.get('app_name')}")
+        app_id = app.get("app_id")
+        app_name = app.get("app_name")
+        policy = app.get("policy_name", "N/A")
+        print(f" - {app_name} (ID: {app_id}) | Policy: {policy}")
