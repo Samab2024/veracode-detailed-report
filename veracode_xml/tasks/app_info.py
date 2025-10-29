@@ -96,9 +96,6 @@ def run(args):
                 for cf in custom_fields:
                     print(f"  {cf.attrib.get('name','-')}: {cf.attrib.get('value','-') or '-'}")
 
-        # Save XML output
-        save_output(content, args, "app_info")
-
     except KeyboardInterrupt:
         print("\n🛑 Operation cancelled.")
         sys.exit(1)
