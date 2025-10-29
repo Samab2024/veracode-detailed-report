@@ -1,4 +1,8 @@
-from ..utils.api_helpers import get_veracode_session, resolve_app_id, get_latest_build_id
+import sys
+import requests
+import xml.etree.ElementTree as ET
+from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
+from veracode_xml.config import get_api_base
 
 HELP_TEXT = "Fetch build info for a specific build or latest build."
 
