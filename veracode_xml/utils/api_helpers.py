@@ -108,6 +108,8 @@ def find_app_by_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
     Returns a list of matching apps (partial match supported).
     Each item is a dict with app_id and app_name.
     """
+    import xml.etree.ElementTree as ET
+    
     url = endpoint_getapplist(region)
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
     print(response)
@@ -115,11 +117,12 @@ def find_app_by_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
     if response.status_code != 200:
         print(f"❌ Failed to fetch app list ({response.status_code})")
         return []
-
-    import xml.etree.ElementTree as ET
+    
     root = ET.fromstring(response.text)
+    ns = {"ns": "https://analysiscenter.veracode.com/schema/2.0/applist"}  # namespace
+    
     matches = []
-    for app in root.findall(".//application"):
+    for app in root.findall("ns:app", ns):
         name = app.attrib.get("app_name", "")
         if app_name.lower() in name.lower():
             matches.append({"app_id": app.attrib["app_id"], "app_name": name})
