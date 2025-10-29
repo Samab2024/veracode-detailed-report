@@ -90,22 +90,6 @@ Your credentials are automatically loaded using the Veracode Python HMAC library
 
 ---
 
-## 🧱 Project Structure
-```
-veracode_xml/
-├── __init__.py
-├── cli.py                  # CLI entry point
-├── config.py               # API endpoint and region config
-├── tasks/
-│   ├── __init__.py
-│   └── detailed_report.py  # First supported task
-└── utils/
-    ├── __init__.py
-    └── api_helpers.py      # Common HMAC + API XML logic
-```
-
----
-
 ## 🧩 Adding New Tasks
 ```
 Each task lives inside the tasks/ folder and exposes a run(args) function.
