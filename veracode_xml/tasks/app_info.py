@@ -15,7 +15,6 @@ HELP_TEXT = "Fetch detailed info for a specific Veracode application by app_id."
 def setup_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-a", "--app_id",
-        required=True,
         help="Application ID (integer) (alternate to --app_name). Example: 2477056"
     )
     parser.add_argument(
