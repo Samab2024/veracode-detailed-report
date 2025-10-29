@@ -3,8 +3,9 @@ Fetch information for a specific application.
 Reference: https://docs.veracode.com/r/r_getappinfo
 """
 
-import xml.etree.ElementTree as ET
+import argparse
 import requests
+import xml.etree.ElementTree as ET
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
 from veracode_xml.config import xml_api_v5_base
 
