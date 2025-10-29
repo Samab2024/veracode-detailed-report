@@ -3,6 +3,7 @@ Fetch information for a specific application.
 Reference: https://docs.veracode.com/r/r_getappinfo
 """
 
+import os
 import argparse
 import requests
 import xml.etree.ElementTree as ET
