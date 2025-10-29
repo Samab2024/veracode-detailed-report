@@ -1,5 +1,12 @@
 from ..utils.api_helpers import get_veracode_session, resolve_app_id
 
+HELP_TEXT = "Fetch detailed information for a specific application."
+
+def setup_parser(parser):
+    parser.add_argument("-i", "--app_id", help="Veracode App ID (required if --app_name not used)")
+    parser.add_argument("-n", "--app_name", help="Veracode App Name (required if --app_id not used)")
+    parser.add_argument("-r", "--region", choices=["us","eu","gov"], default="us", help="Region for API requests")
+
 def run(args):
     session = get_veracode_session(region=args.region)
     app_id = args.app_id or resolve_app_id(args.app_name, session)
