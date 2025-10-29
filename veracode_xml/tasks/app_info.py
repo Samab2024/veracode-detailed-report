@@ -34,6 +34,11 @@ def setup_parser(parser: argparse.ArgumentParser):
         choices=["us", "eu", "us_fed"],
         help="Region for Veracode platform (default: us)."
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Print full XML response."
+    )
 
 
 def run(args):
