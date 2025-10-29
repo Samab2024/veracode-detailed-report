@@ -19,6 +19,7 @@ def run(args):
     print(f"📡 Fetching app info for app_id={args.app_id} ...")
 
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
+    print(response.text)
     if response.status_code != 200:
         print(f"❌ API request failed: {response.status_code}")
         print(response.text)
