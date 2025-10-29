@@ -110,7 +110,6 @@ def find_app_by_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
     """
     url = endpoint_getapplist(region)
     response = requests.get(url, auth=RequestsAuthPluginVeracodeHMAC())
-    print(response.text)
 
     if response.status_code != 200:
         print(f"❌ Failed to fetch app list ({response.status_code})")
@@ -123,6 +122,7 @@ def find_app_by_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
         name = app.attrib.get("app_name", "")
         if app_name.lower() in name.lower():
             matches.append({"app_id": app.attrib["app_id"], "app_name": name})
+    print(matches)
     return matches
 
 def save_output(content: str, args, task_name: str):
