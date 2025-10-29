@@ -32,33 +32,36 @@ pip install .
 
 ## 🧠 CLI Usage
 ```
-veracode-xml -t detailed_report --app_name "My App" --format PDF \
-    --scan_type ds --output_dir ~/Downloads --prefix myapp_
-```
-Parameters
-```
-| Short | Long          | Required               | Description                                  |
-|-------|---------------|------------------------|----------------------------------------------|
-| `-t`  | `--task`      | ✅                      | Task to execute (e.g. `detailed_report`)     |
-| `-i`  | `--app_id`    | ⛔ (either this or `-n`)| Veracode Application ID                      |
-| `-n`  | `--app_name`  | ⛔ (either this or `-i`)| Veracode Application Name                    |
-| `-f`  | `--format`    | ✅                      | Report format (`XML` or `PDF`)               |
-| `-s`  | `--scan_type` | ⛔ (default: `ss`)      | Scan type: `ss` = Static, `ds` = Dynamic     |
-| `-r`  | `--region`    | ❌ (default: `us`)      | Region (`us` or `eu`)                        |
-| `-o`  | `--output_dir`| ❌ (default: `.`)       | Directory to save report                     |
-| `-p`  | `--prefix`    | ❌                      | Filename prefix (e.g. `test_`)               |
-```
+# General pattern
+veracode-xml -t <task> [task-specific parameters]
 
+# Example: Fetch detailed report for latest dynamic scan
+veracode-xml -t detailed_report -n "Customer Portal" -f PDF -s ds
+
+# Example: List all applications
+veracode-xml -t app_list
+
+# Example: Get info for a specific app
+veracode-xml -t app_info -i 1922487
+
+# Example: Get info for a specific build (latest if build_id omitted)
+veracode-xml -t build_info -n "Customer Portal" -s ds
+```
+⚠️ Use -h or --help with any task to see all available parameters and defaults:
+```
+veracode-xml -t detailed_report -h
+```
 ---
 ## 🧩 Supported Tasks
 ```
 | Task                         | Meaning                                         |
 | ---------------------------- | ----------------------------------------------- |
 | 🧾 `detailed_report`         | Represents a generated detailed report/document |
-| 📋 `app_list`                | Listing or viewing applications                 |
+| 📋 `app_list`                | Listing all applications accessible to API ID   |
+| 🌍 `app_info`                | Represent application info for specific app     |
 | 📘 `build_list`              | Represents builds under application             |
 | 🧱 `build_info`              | Represents build info for specific build        |
-| ⚙️ `scan_summary` *(future)* | Scan summary/report                             |
+| ⚙️ `summary` *(coming soon)* | Scan summary/report                             |
 ```
 ---
 
