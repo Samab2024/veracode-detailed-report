@@ -1,5 +1,10 @@
 from ..utils.api_helpers import get_veracode_session
 
+HELP_TEXT = "List all applications in the account."
+
+def setup_parser(parser):
+    parser.add_argument("-r", "--region", choices=["us","eu","gov"], default="us", help="Region for API requests")
+
 def run(args):
     session = get_veracode_session(region=args.region)
     url = f"{session.api_base}/api/4.0/getapplist.do"
