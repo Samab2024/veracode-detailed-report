@@ -31,10 +31,10 @@ pip install .
 ---
 
 ## 🧠 CLI Usage
-
+```
 veracode-xml -t detailed_report --app_name "My App" --format PDF \
     --scan_type ds --output_dir ~/Downloads --prefix myapp_
-
+```
 Parameters
 ```
 | Short | Long           | Required                | Description                    | Example                  |
@@ -53,9 +53,9 @@ Parameters
 ---
 
 ## 📘 Examples
-
-🔹 Get Static Scan Report (XML)
 ```
+🔹 Get Static Scan Report (XML)
+
 veracode-xml -t detailed_report -n "Core Banking App" -f XML -s ss
 
 🔸 Get Dynamic Scan Report (PDF)
@@ -99,9 +99,9 @@ veracode_xml/
 ---
 
 ## 🧩 Adding New Tasks
-
-Each task lives inside the tasks/ folder and exposes a run(args) function.
 ```
+Each task lives inside the tasks/ folder and exposes a run(args) function.
+
 Example (tasks/my_new_task.py):
 
 def run(args):
