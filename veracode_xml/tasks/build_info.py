@@ -55,7 +55,7 @@ def run(args):
     app_id = args.app_id
     if not app_id and args.app_name:
         print(f"Resolving app_id for app_name='{args.app_name}' ...")
-        app_id = find_app_by_name(args.app_name, args.region)
+        app_id = find_app_id_by_name(args.app_name, args.region)
         if not app_id:
             print(f"❌ App name '{args.app_name}' not found in your Veracode account.")
             return
@@ -70,7 +70,6 @@ def run(args):
         list_url = endpoint_getbuildlist(args.region) + f"?app_id={app_id}"
         print("ℹ️  No build_id provided, fetching latest build list...")
         resp = requests.get(list_url, auth=RequestsAuthPluginVeracodeHMAC())
-        print(resp.text)
         if resp.status_code != 200:
             print(f"❌ Failed to fetch build list: HTTP {resp.status_code}")
             print(resp.text)
