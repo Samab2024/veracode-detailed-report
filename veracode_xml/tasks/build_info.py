@@ -55,7 +55,7 @@ def run(args):
     app_id = args.app_id
     if not app_id and args.app_name:
         print(f"Resolving app_id for app_name='{args.app_name}' ...")
-        app_id = _resolve_app_id_from_name(args.app_name, args.region)
+        app_id = find_app_by_name(args.app_name, args.region)
         if not app_id:
             print(f"❌ App name '{args.app_name}' not found in your Veracode account.")
             return
