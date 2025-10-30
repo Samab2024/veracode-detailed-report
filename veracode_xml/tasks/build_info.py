@@ -129,6 +129,7 @@ def run(args):
         print("⚠️  No build info found.")
         return
 
-    print("\n✅ Build Info:")
+    scan_type_label = "Dynamic Scan" if getattr(args, "scan_type", "").lower() == "ds" else "Static Scan"
+    print(f"\n✅ Build Info ({scan_type_label}):")
     for k, v in build.attrib.items():
         print(f"  {k}: {v}")
