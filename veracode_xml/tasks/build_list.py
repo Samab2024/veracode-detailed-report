@@ -83,7 +83,7 @@ def run(args):
                 f"• Build ID: {b.attrib.get('build_id')}, "
                 f"Version: {b.attrib.get('version')}, "
                 f"Scan Type: {'Dynamic' if b.attrib.get('dynamic_scan_type') else 'Static'}, "
-                f"Date: {b.attrib.get('policy_updated_date', 'N/A')}"
+                f"Last Policy Update: {b.attrib.get('policy_updated_date', 'N/A')}"
             )
 
     except ET.ParseError as e:
