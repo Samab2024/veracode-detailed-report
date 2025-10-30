@@ -1,6 +1,6 @@
 import os
 from veracode_xml.utils.api_helpers import (
-    get_app_id_from_name,
+    find_app_by_name,
     get_latest_build_id,
     fetch_detailed_report,
 )
@@ -16,6 +16,33 @@ def setup_parser(parser):
     parser.add_argument("-o", "--output_dir", default=".", help="Directory to save report")
     parser.add_argument("-p", "--prefix", help="Filename prefix")
 
+def find_app_id_by_name(app_name: str, region: str = "us") -> str | None:
+    """
+    Find an app_id given a full or partial app name.
+    Prompts the user if multiple matches are found.
+    """
+    apps = find_app_by_name(app_name, region)
+    if not apps:
+        return None
+
+    if len(apps) == 1:
+        app = apps[0]
+        print(f"✅ Found application: {app['app_name']} (ID: {app['app_id']})")
+        return app["app_id"]
+
+    # Multiple matches found
+    print("\n⚠️  Multiple matches found:")
+    for i, app in enumerate(apps, 1):
+        print(f"  [{i}] {app['app_name']} (ID: {app['app_id']})")
+
+    while True:
+        choice = input("Enter the number of the application you want to use: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(apps):
+            selected = apps[int(choice) - 1]
+            print(f"✅ Selected: {selected['app_name']} (ID: {selected['app_id']})")
+            return selected["app_id"]
+        print("Invalid choice. Please try again.")
+
 def run(args):
     print("📘 Task: Fetch Detailed Report")
 
@@ -23,7 +50,7 @@ def run(args):
     app_id = args.app_id
     if not app_id and args.app_name:
         print(f"Resolving app_id for app_name='{args.app_name}' ...")
-        app_id = get_app_id_from_name(args.app_name)
+        app_id = find_app_by_name(args.app_name)
 
     if not app_id:
         print("❌ Please provide a valid app_id or app_name.")
