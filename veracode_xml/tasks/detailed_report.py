@@ -33,7 +33,7 @@ def find_app_id_by_name(app_name: str, region: str = "us") -> str | None:
     # Multiple matches found
     print("\n⚠️  Multiple matches found:")
     for i, app in enumerate(apps, 1):
-        pprint(f"  [{i:<2}] {app['app_name']:<30}\t(ID: {app['app_id']})\t(Last Policy Check: {app['last_policy_update']})")
+        print(f"  [{i:<2}] {app['app_name']:<30}\t(ID: {app['app_id']})\t(Last Policy Check: {app['last_policy_update']})")
 
     while True:
         choice = input("Enter the number of the application you want to use: ").strip()
