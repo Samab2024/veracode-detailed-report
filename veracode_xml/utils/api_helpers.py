@@ -123,8 +123,9 @@ def find_app_by_name(app_name: str, region: str = DEFAULT_REGION) -> str | None:
     matches = []
     for app in root.findall("ns:app", ns):
         name = app.attrib.get("app_name", "")
+        policy_upd = app.attrib.get("policy_updated_date", "")
         if app_name.lower() in name.lower():
-            matches.append({"app_id": app.attrib["app_id"], "app_name": name})
+            matches.append({"app_id": app.attrib["app_id"], "app_name": name, "last_policy_update": policy_upd})
     return matches
 
 def save_output(content: str, args, task_name: str):
