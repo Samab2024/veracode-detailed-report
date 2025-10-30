@@ -70,6 +70,7 @@ def run(args):
         list_url = endpoint_getbuildlist(args.region) + f"?app_id={app_id}"
         print("ℹ️  No build_id provided, fetching latest build list...")
         resp = requests.get(list_url, auth=RequestsAuthPluginVeracodeHMAC())
+        print(resp.text)
         if resp.status_code != 200:
             print(f"❌ Failed to fetch build list: HTTP {resp.status_code}")
             print(resp.text)
