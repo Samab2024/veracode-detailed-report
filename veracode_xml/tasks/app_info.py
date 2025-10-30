@@ -9,11 +9,10 @@ import os
 import requests
 import xml.etree.ElementTree as ET
 from veracode_api_signing.plugin_requests import RequestsAuthPluginVeracodeHMAC
-from veracode_xml.utils.api_helpers import find_app_by_name, save_output, pretty_print_xml
+from veracode_xml.utils.api_helpers import find_app_by_name, pretty_print_xml
 from veracode_xml.config import xml_api_v5_base
 
 HELP_TEXT = "Fetch detailed info for a specific Veracode application by app_id or app_name."
-
 
 def setup_parser(parser: argparse.ArgumentParser):
     """
@@ -40,6 +39,32 @@ def setup_parser(parser: argparse.ArgumentParser):
         help="Print full XML response."
     )
 
+def find_app_id_by_name(app_name: str, region: str = "us") -> str | None:
+    """
+    Find an app_id given a full or partial app name.
+    Prompts the user if multiple matches are found.
+    """
+    apps = find_app_by_name(app_name, region)
+    if not apps:
+        return None
+
+    if len(apps) == 1:
+        app = apps[0]
+        print(f"✅ Found application: {app['app_name']} (ID: {app['app_id']})")
+        return app["app_id"]
+
+    # Multiple matches found
+    print("\n⚠️  Multiple matches found:")
+    for i, app in enumerate(apps, 1):
+        print(f"  [{i}] {app['app_name']} (ID: {app['app_id']})")
+
+    while True:
+        choice = input("Enter the number of the application you want to use: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(apps):
+            selected = apps[int(choice) - 1]
+            print(f"✅ Selected: {selected['app_name']} (ID: {selected['app_id']})")
+            return selected["app_id"]
+        print("Invalid choice. Please try again.")
 
 def run(args):
     """
@@ -102,31 +127,3 @@ def run(args):
     except Exception as e:
         print(f"❌ Error: {e}")
         sys.exit(1)
-
-
-def find_app_id_by_name(app_name, region):
-    """
-    Find an app_id given a full or partial app name.
-    Prompts the user if multiple matches are found.
-    """
-    apps = find_app_by_name(app_name, region)
-    if not apps:
-        return None
-
-    if len(apps) == 1:
-        app = apps[0]
-        print(f"✅ Found application: {app['app_name']} (ID: {app['app_id']})")
-        return app["app_id"]
-
-    # Multiple matches found
-    print("\n⚠️  Multiple matches found:")
-    for i, app in enumerate(apps, 1):
-        print(f"  [{i}] {app['app_name']} (ID: {app['app_id']})")
-
-    while True:
-        choice = input("Enter the number of the application you want to use: ").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(apps):
-            selected = apps[int(choice) - 1]
-            print(f"✅ Selected: {selected['app_name']} (ID: {selected['app_id']})")
-            return selected["app_id"]
-        print("Invalid choice. Please try again.")
